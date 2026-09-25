@@ -144,3 +144,10 @@ services:
     Mediarama\Security\Infrastructure\Http\DevelopmentActorSubscriber:
         arguments:
             $appEnvironment: '%kernel.environment%'
+
+
+    Mediarama\Import\Application\ImportMappingRepository:
+        alias: Mediarama\Import\Infrastructure\Persistence\DbalImportMappingRepository
+
+    Mediarama\Import\Application\ImportCheckpointRepository:
+        alias: Mediarama\Import\Infrastructure\Persistence\DbalImportCheckpointRepository
