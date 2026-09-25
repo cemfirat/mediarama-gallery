@@ -12,7 +12,7 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class FinalizeUploadController
 {
-    public function __construct(private FinalizeUpload $finalize)
+    public function __construct(private FinalizeUpload $finalize, private CurrentUser $currentUser)
     {
     }
 
@@ -21,7 +21,7 @@ final readonly class FinalizeUploadController
     {
         $media = ($this->finalize)(
             Uuid::fromString($id),
-            Uuid::fromString((string) $request->headers->get('X-Mediarama-User')),
+            $this->currentUser->requireUser()->id,
         );
 
         return new JsonResponse([
