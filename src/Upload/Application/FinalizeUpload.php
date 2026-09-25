@@ -19,7 +19,9 @@ final readonly class FinalizeUpload
         private MediaAssetRepository $media,
         private MediaStorage $storage,
         private ContentInspector $inspector,
+        private UploadContentPolicy $contentPolicy,
         private UploadDestinationAuthorizer $authorizer,
+        private UploadFinalizationRepository $finalizations,
         private MessageBusInterface $bus,
     ) {
     }
@@ -27,6 +29,15 @@ final readonly class FinalizeUpload
     public function __invoke(Uuid $sessionId, Uuid $actingUserId): MediaAsset
     {
         $session = $this->sessions->get($sessionId);
+
+        $existingMediaId = $this->finalizations->findMediaId($sessionId);
+        if ($existingMediaId !== null) {
+            if (!$session->userId->equals($actingUserId)) {
+                throw new \DomainException('Upload session does not belong to the acting user.');
+            }
+
+            return $this->media->get($existingMediaId);
+        }
 
         if (!$session->userId->equals($actingUserId)) {
             throw new \DomainException('Upload session does not belong to the acting user.');
@@ -42,6 +53,7 @@ final readonly class FinalizeUpload
 
         $temporary = new StorageObjectId('media', $session->temporaryStorageKey);
         $content = $this->inspector->inspect($temporary);
+        $this->contentPolicy->assertAllowed($content);
 
         if ($content->byteSize !== $session->expectedSize) {
             throw new \DomainException('Received upload size does not match expected size.');
@@ -66,6 +78,7 @@ final readonly class FinalizeUpload
         );
 
         $this->media->save($asset);
+        $this->finalizations->remember($sessionId, $asset->id);
         $session->complete();
         $this->sessions->save($session);
 
