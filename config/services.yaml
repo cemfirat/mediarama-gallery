@@ -42,3 +42,7 @@ services:
 
     Mediarama\Upload\Application\ContentInspector:
         alias: Mediarama\Upload\Infrastructure\LocalContentInspector
+
+
+    Mediarama\Upload\Application\UploadDestinationAuthorizer:
+        alias: Mediarama\Upload\Application\AllowAllUploadDestinationAuthorizer
