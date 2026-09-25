@@ -41,8 +41,8 @@ jobs:
         run: |
           php -r '
           require "vendor/autoload.php";
-          foreach (glob("config/*.yaml") as $file) { Symfony\\Component\\Yaml\\Yaml::parseFile($file, Symfony\\Component\\Yaml\\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
-          foreach (glob("config/packages/*.yaml") as $file) { Symfony\\Component\\Yaml\\Yaml::parseFile($file, Symfony\\Component\\Yaml\\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
+          foreach (glob("config/*.yaml") as $file) { Symfony\Component\Yaml\Yaml::parseFile($file, Symfony\Component\Yaml\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
+          foreach (glob("config/packages/*.yaml") as $file) { Symfony\Component\Yaml\Yaml::parseFile($file, Symfony\Component\Yaml\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
           '
 
       - name: Run unit tests
