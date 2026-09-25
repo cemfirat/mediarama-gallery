@@ -18,7 +18,10 @@ final readonly class DbalCollectionUploadPermissionRepository implements Collect
     {
         $owner = $this->connection->fetchOne(
             'SELECT 1 FROM collections WHERE id = :collection AND owner_id = :user AND deleted_at IS NULL',
-            ['collection' => $collectionId->toRfc4122(), 'user' => $userId->toRfc4122()],
+            [
+                'collection' => $collectionId->toRfc4122(),
+                'user' => $userId->toRfc4122(),
+            ],
         );
 
         if ($owner !== false) {
@@ -28,11 +31,10 @@ final readonly class DbalCollectionUploadPermissionRepository implements Collect
         $allowed = $this->connection->fetchOne(
             <<<'SQL'
 SELECT 1
-FROM group_members gm
-JOIN group_permissions gp ON gp.group_id = gm.group_id
-JOIN permissions p ON p.id = gp.permission_id
-WHERE gm.user_id = :user
-  AND p.code = 'collection.media.add'
+FROM user_groups ug
+JOIN group_permissions gp ON gp.group_id = ug.group_id
+WHERE ug.user_id = :user
+  AND gp.permission_key = 'collection.media.add'
 LIMIT 1
 SQL,
             ['user' => $userId->toRfc4122()],
