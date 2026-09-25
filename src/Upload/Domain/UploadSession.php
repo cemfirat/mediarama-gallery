@@ -56,6 +56,35 @@ final class UploadSession
         );
     }
 
+
+    public static function reconstitute(
+        Uuid $id,
+        Uuid $userId,
+        ?Uuid $targetCollectionId,
+        string $originalFilename,
+        int $expectedSize,
+        ?string $expectedMime,
+        string $temporaryStorageKey,
+        UploadStatus $status,
+        DateTimeImmutable $expiresAt,
+        DateTimeImmutable $createdAt,
+        DateTimeImmutable $updatedAt,
+    ): self {
+        return new self(
+            $id,
+            $userId,
+            $targetCollectionId,
+            $originalFilename,
+            $expectedSize,
+            $expectedMime,
+            $temporaryStorageKey,
+            $status,
+            $expiresAt,
+            $createdAt,
+            $updatedAt,
+        );
+    }
+
     public function begin(): void
     {
         if ($this->status !== UploadStatus::Created) {
