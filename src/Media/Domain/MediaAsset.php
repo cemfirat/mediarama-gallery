@@ -53,6 +53,81 @@ final class MediaAsset
         }
     }
 
+
+    /**
+     * @param array<string, mixed> $metadata
+     * @param array<string, string> $metadataProvenance
+     */
+    public static function reconstitute(
+        Uuid $id,
+        ?Uuid $ownerId,
+        StorageObjectId $original,
+        string $originalFilename,
+        string $mimeType,
+        MediaType $mediaType,
+        int $byteSize,
+        string $checksumSha256,
+        ProcessingState $processingState,
+        ModerationState $moderationState,
+        DateTimeImmutable $createdAt,
+        DateTimeImmutable $updatedAt,
+        ?int $width = null,
+        ?int $height = null,
+        ?int $durationMs = null,
+        ?string $title = null,
+        ?string $description = null,
+        ?DateTimeImmutable $capturedAt = null,
+        array $metadata = [],
+        array $metadataProvenance = [],
+        ?string $creator = null,
+        ?string $copyright = null,
+        ?string $cameraMake = null,
+        ?string $cameraModel = null,
+        ?string $lens = null,
+        ?int $iso = null,
+        ?string $aperture = null,
+        ?string $exposureTime = null,
+        ?string $focalLength = null,
+        ?float $latitude = null,
+        ?float $longitude = null,
+        ?string $locationName = null,
+    ): self {
+        return new self(
+            $id,
+            $ownerId,
+            $original,
+            $originalFilename,
+            $mimeType,
+            $mediaType,
+            $byteSize,
+            $checksumSha256,
+            $processingState,
+            $moderationState,
+            $createdAt,
+            $updatedAt,
+            $width,
+            $height,
+            $durationMs,
+            $title,
+            $description,
+            $capturedAt,
+            $metadata,
+            $metadataProvenance,
+            $creator,
+            $copyright,
+            $cameraMake,
+            $cameraModel,
+            $lens,
+            $iso,
+            $aperture,
+            $exposureTime,
+            $focalLength,
+            $latitude,
+            $longitude,
+            $locationName,
+        );
+    }
+
     /** @param array<string, mixed> $metadata */
     public static function createWithId(
         Uuid $id,
