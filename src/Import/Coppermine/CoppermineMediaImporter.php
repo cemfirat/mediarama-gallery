@@ -10,7 +10,9 @@ use Mediarama\Import\Application\ImportMappingRepository;
 use Mediarama\Upload\Application\ContentInspector;
 use Mediarama\Media\Application\MediaStorage;
 use Mediarama\Media\Domain\StorageObjectId;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
+use Mediarama\Media\Application\ProcessMedia;
 
 final readonly class CoppermineMediaImporter
 {
@@ -23,6 +25,7 @@ final readonly class CoppermineMediaImporter
         private CoppermineFileLocator $files,
         private MediaStorage $storage,
         private ContentInspector $inspector,
+        private MessageBusInterface $bus,
     ) {
     }
 
@@ -68,7 +71,7 @@ final readonly class CoppermineMediaImporter
 
                 $mediaId = Uuid::v7();
                 $storageKey = sprintf('originals/%s/%s', $mediaId->toRfc4122(), basename((string) $row['filename']));
-                $objectId = new StorageObjectId('local', $storageKey);
+                $objectId = new StorageObjectId('media', $storageKey);
                 $stream = fopen($path, 'rb');
                 if ($stream === false) {
                     throw new \RuntimeException('Unable to open Coppermine original: '.$path);
@@ -100,7 +103,7 @@ INSERT INTO media_assets (
     byte_size, checksum_sha256, width, height, title, description,
     processing_state, moderation_state, metadata, created_at, updated_at
 ) VALUES (
-    :id, :owner_id, 'local', :storage_key, :filename, :mime_type, :media_type,
+    :id, :owner_id, 'media', :storage_key, :filename, :mime_type, :media_type,
     :byte_size, :checksum, :width, :height, :title, :description,
     'uploaded', :moderation_state, :metadata::jsonb, :created_at, NOW()
 )
@@ -148,6 +151,7 @@ SQL,
                     $this->mappings->remember('coppermine', 'picture', $sourceId, $mediaId);
                 });
 
+                $this->bus->dispatch(new ProcessMedia($mediaId->toRfc4122()));
                 $this->checkpoints->save('coppermine', 'pictures', $sourceId);
                 ++$imported;
             } catch (\Throwable $e) {
