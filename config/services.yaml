@@ -38,3 +38,7 @@ services:
 
     Mediarama\Media\Application\MediaStorage:
         alias: Mediarama\Media\Infrastructure\Storage\LocalMediaStorage
+
+
+    Mediarama\Upload\Application\ContentInspector:
+        alias: Mediarama\Upload\Infrastructure\LocalContentInspector
