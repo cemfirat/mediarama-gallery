@@ -8,9 +8,9 @@ The project is **not intended to be a visual reskin of Coppermine**. The goal is
 
 ## Project status
 
-**Phase: research and architecture**
+**Phase: architecture baseline and foundation planning**
 
-No final decision has yet been made about forking Coppermine, the database engine, or the final application architecture. These decisions should follow a structured analysis rather than be assumed in advance.
+The initial research phase is complete enough to establish the architecture baseline: Mediarama will be a clean implementation rather than a permanent Coppermine fork, PostgreSQL is the primary database, media storage is abstracted, originals are immutable by default, heavy media processing is asynchronous, and UIkit is the presentation foundation. Detailed decisions are recorded as ADRs.
 
 ## Vision
 
@@ -232,6 +232,15 @@ Technical research is documented separately from the project overview:
 - [Coppermine Data Model Analysis](docs/research/coppermine-data-model.md)
 - [Coppermine Upload & Media Processing Analysis](docs/research/coppermine-upload-processing.md)
 - [Coppermine Theme & Plugin Architecture Analysis](docs/research/coppermine-theme-plugin-architecture.md)
+
+Architecture:
+
+- [Mediarama Target Architecture](docs/architecture/target-architecture.md)
+- [ADR-0001 — Clean implementation](docs/adr/0001-clean-implementation.md)
+- [ADR-0002 — PostgreSQL](docs/adr/0002-postgresql.md)
+- [ADR-0003 — Storage and immutable originals](docs/adr/0003-storage-and-originals.md)
+- [ADR-0004 — Processing and moderation states](docs/adr/0004-processing-and-moderation.md)
+- [ADR-0005 — UIkit presentation boundary](docs/adr/0005-uikit-presentation.md)
 
 The current working hypothesis is to build a new Mediarama core, use the actively maintained Coppermine 1.6.x line as the primary functional and migration reference, and use selected 1.7.x Theme2/responsive work as additional UX research. This remains subject to the remaining discovery work and formal architecture decisions.
 
