@@ -3,8 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
+    "build": "npm run build:css && npm run build:js",
     "build:css": "lessc assets/less/app.less public/build/app.css --clean-css",
-    "watch:css": "lessc assets/less/app.less public/build/app.css --source-map"
+    "build:js": "mkdir -p public/build && cp node_modules/uikit/dist/js/uikit.min.js public/build/uikit.min.js && cp node_modules/uikit/dist/js/uikit-icons.min.js public/build/uikit-icons.min.js",
+    "watch:css": "lessc assets/less/app.less public/build/app.css --source-map --watch"
   },
   "dependencies": {
     "uikit": "^3.25.12"
