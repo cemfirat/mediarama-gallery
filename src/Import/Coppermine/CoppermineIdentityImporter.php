@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Mediarama\Import\Coppermine;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Mediarama\Import\Application\ImportCheckpointRepository;
 use Mediarama\Import\Application\ImportMappingRepository;
 use Symfony\Component\Uid\Uuid;
@@ -54,6 +55,7 @@ SQL,
                     'name' => (string) $row['group_name'],
                     'system' => ((int) $row['has_admin_access']) === 1,
                 ],
+                ['system' => ParameterType::BOOLEAN],
             );
 
             foreach ($this->permissionKeys($row) as $permission) {
@@ -126,9 +128,8 @@ SQL,
 
             // Clear the previous primary marker first so a changed source primary group
             // cannot violate Mediarama's one-primary-group-per-user invariant.
-            $this->target->update(
-                'user_groups',
-                ['is_primary' => false],
+            $this->target->executeStatement(
+                'UPDATE user_groups SET is_primary = FALSE WHERE user_id = :user_id',
                 ['user_id' => $targetId->toRfc4122()],
             );
 
@@ -150,6 +151,7 @@ SQL,
                         'group_id' => $groupId->toRfc4122(),
                         'primary' => $index === 0,
                     ],
+                    ['primary' => ParameterType::BOOLEAN],
                 );
             }
 
