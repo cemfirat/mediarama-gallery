@@ -87,3 +87,7 @@ services:
                 - 'audio/mp4'
                 - 'audio/ogg'
                 - 'audio/flac'
+
+
+    Mediarama\Upload\Application\ExpiredUploadSessionRepository:
+        alias: Mediarama\Upload\Infrastructure\Persistence\DbalExpiredUploadSessionRepository
