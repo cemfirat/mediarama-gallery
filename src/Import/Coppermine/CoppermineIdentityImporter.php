@@ -124,6 +124,14 @@ SQL,
                 ],
             );
 
+            // Clear the previous primary marker first so a changed source primary group
+            // cannot violate Mediarama's one-primary-group-per-user invariant.
+            $this->target->update(
+                'user_groups',
+                ['is_primary' => false],
+                ['user_id' => $targetId->toRfc4122()],
+            );
+
             $groupIds = $this->groupIds((string) $row['user_group'], (string) $row['user_group_list']);
             foreach ($groupIds as $index => $sourceGroupId) {
                 $groupId = $this->mappings->findTargetId('coppermine', 'group', $sourceGroupId);
