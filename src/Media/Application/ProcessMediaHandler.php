@@ -14,6 +14,7 @@ final readonly class ProcessMediaHandler
     public function __construct(
         private InspectMediaMetadata $metadata,
         private GenerateImageDerivatives $images,
+        private InspectImageGeometry $geometry,
         private MediaAssetRepository $media,
     ) {
     }
@@ -33,6 +34,10 @@ final readonly class ProcessMediaHandler
             $asset = $this->media->get($id);
 
             if ($asset->mediaType === MediaType::Image) {
+                $geometry = ($this->geometry)($asset);
+                $asset->setImageGeometry($geometry['width'], $geometry['height']);
+                $this->media->save($asset);
+
                 ($this->images)($asset);
             }
 
