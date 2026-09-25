@@ -79,8 +79,8 @@ This aligns with the schema diff above.
 
 Parsed `sql/basic.sql` contains:
 
-- 220 config defaults in current 1.6;
-- 216 config defaults in 1.7.
+- 221 config defaults in current 1.6;
+- 217 config defaults in 1.7.
 
 ### Added in 1.7
 
