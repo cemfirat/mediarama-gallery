@@ -13,14 +13,14 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class UploadChunkController
 {
-    public function __construct(private ReceiveUploadChunk $receive)
+    public function __construct(private ReceiveUploadChunk $receive, private CurrentUser $currentUser)
     {
     }
 
     #[Route('/api/uploads/{id}/chunks/{index}', name: 'upload_chunk', methods: ['PUT'])]
     public function __invoke(string $id, int $index, Request $request): JsonResponse
     {
-        $userId = Uuid::fromString((string) $request->headers->get('X-Mediarama-User'));
+        $userId = $this->currentUser->requireUser()->id;
         $size = (int) $request->headers->get('Content-Length', '0');
         $offset = (int) $request->headers->get('Upload-Offset', '0');
         $checksum = strtolower((string) $request->headers->get('Upload-Checksum-SHA256', ''));
