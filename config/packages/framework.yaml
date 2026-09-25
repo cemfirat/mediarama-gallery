@@ -9,4 +9,4 @@ framework:
             async: '%env(MESSENGER_TRANSPORT_DSN)%'
             failed: 'doctrine://default?queue_name=failed'
         routing:
-            'Mediarama\\Shared\\Application\\AsyncMessage': async
+            'Mediarama\\Media\\Application\\ProcessMedia': async
