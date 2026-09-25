@@ -11,8 +11,8 @@ use Mediarama\Import\Application\ImportSourceReport;
 final readonly class CoppermineSchemaInspector implements ImportSource
 {
     public function __construct(
-        private Connection $source,
-        private string $tablePrefix = 'cpg_',
+        private CoppermineConnectionFactory $sourceFactory,
+        private CoppermineTablePrefix $prefix,
     ) {
     }
 
@@ -23,28 +23,29 @@ final readonly class CoppermineSchemaInspector implements ImportSource
 
     public function inspect(): ImportSourceReport
     {
-        $tables = $this->source->createSchemaManager()->listTableNames();
+        $source = $this->sourceFactory->create();
+        $tables = $source->createSchemaManager()->listTableNames();
         $required = ['pictures', 'albums', 'users', 'usergroups', 'comments', 'votes'];
         $warnings = [];
         $counts = [];
 
         foreach ($required as $suffix) {
-            $table = $this->tablePrefix.$suffix;
+            $table = $this->prefix->table($suffix);
             if (!in_array($table, $tables, true)) {
                 $warnings[] = sprintf('Expected table %s was not found.', $table);
                 continue;
             }
 
-            $counts[$suffix] = (int) $this->source->fetchOne('SELECT COUNT(*) FROM '.$this->quoteIdentifier($table));
+            $counts[$suffix] = (int) $source->fetchOne('SELECT COUNT(*) FROM '.$source->quoteIdentifier($table));
         }
 
         $version = '1.6.x-compatible';
-        $pictures = $this->tablePrefix.'pictures';
+        $pictures = $this->prefix->table('pictures');
 
         if (in_array($pictures, $tables, true)) {
             $columns = array_map(
                 static fn ($column): string => strtolower($column->getName()),
-                $this->source->createSchemaManager()->listTableColumns($pictures),
+                $source->createSchemaManager()->listTableColumns($pictures),
             );
 
             if (in_array('mime', $columns, true) || in_array('ftype', $columns, true)) {
@@ -55,8 +56,4 @@ final readonly class CoppermineSchemaInspector implements ImportSource
         return new ImportSourceReport('coppermine', $version, $counts, $warnings);
     }
 
-    private function quoteIdentifier(string $identifier): string
-    {
-        return $this->source->quoteIdentifier($identifier);
-    }
 }
