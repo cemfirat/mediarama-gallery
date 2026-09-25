@@ -12,7 +12,7 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class CompleteUploadController
 {
-    public function __construct(private CompleteChunkedUpload $complete)
+    public function __construct(private CompleteChunkedUpload $complete, private CurrentUser $currentUser)
     {
     }
 
@@ -21,7 +21,7 @@ final readonly class CompleteUploadController
     {
         ($this->complete)(
             Uuid::fromString($id),
-            Uuid::fromString((string) $request->headers->get('X-Mediarama-User')),
+            $this->currentUser->requireUser()->id,
         );
 
         return new JsonResponse(['status' => 'uploaded']);
