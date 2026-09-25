@@ -16,8 +16,7 @@
                 </div>
                 <div class="uk-navbar-right">
                     <ul class="uk-navbar-nav uk-visible@m">
-                        <li><a href="#">Collections</a></li>
-                        <li><a href="#">Explore</a></li>
+                        <li><a href="{{ path('public_collections') }}">Collections</a></li>
                     </ul>
                     <button class="uk-navbar-toggle uk-hidden@m" type="button" uk-toggle="target: #mobile-navigation" aria-label="Open navigation">
                         <span uk-navbar-toggle-icon></span>
@@ -31,8 +30,7 @@
         <div class="uk-offcanvas-bar">
             <button class="uk-offcanvas-close" type="button" uk-close aria-label="Close navigation"></button>
             <ul class="uk-nav uk-nav-default">
-                <li><a href="#">Collections</a></li>
-                <li><a href="#">Explore</a></li>
+                <li><a href="{{ path('public_collections') }}">Collections</a></li>
             </ul>
         </div>
     </div>
