@@ -44,5 +44,23 @@ services:
         alias: Mediarama\Upload\Infrastructure\LocalContentInspector
 
 
+    Mediarama\Collection\Application\CollectionUploadPermissionRepository:
+        alias: Mediarama\Collection\Infrastructure\Persistence\DbalCollectionUploadPermissionRepository
+
     Mediarama\Upload\Application\UploadDestinationAuthorizer:
-        alias: Mediarama\Upload\Application\AllowAllUploadDestinationAuthorizer
+        alias: Mediarama\Upload\Infrastructure\Authorization\CollectionUploadDestinationAuthorizer
+
+    Mediarama\Upload\Application\UploadQuota:
+        alias: Mediarama\Upload\Application\UnlimitedUploadQuota
+
+    Mediarama\Upload\Application\ChunkStorage:
+        alias: Mediarama\Upload\Infrastructure\Storage\LocalChunkStorage
+
+    Mediarama\Upload\Infrastructure\Storage\LocalChunkStorage:
+        arguments:
+            $mediaRoot: '%env(resolve:MEDIA_STORAGE_PATH)%'
+
+    Mediarama\Upload\Application\UploadPolicy:
+        arguments:
+            $maximumAssetBytes: '%env(int:UPLOAD_MAX_ASSET_BYTES)%'
+            $maximumChunkBytes: '%env(int:UPLOAD_MAX_CHUNK_BYTES)%'
