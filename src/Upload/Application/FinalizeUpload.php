@@ -8,7 +8,6 @@ use Mediarama\Media\Application\MediaAssetRepository;
 use Mediarama\Media\Application\MediaStorage;
 use Mediarama\Media\Application\ProcessMedia;
 use Mediarama\Media\Domain\MediaAsset;
-use Mediarama\Media\Domain\MediaType;
 use Mediarama\Media\Domain\StorageObjectId;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
@@ -19,17 +18,14 @@ final readonly class FinalizeUpload
         private UploadSessionRepository $sessions,
         private MediaAssetRepository $media,
         private MediaStorage $storage,
+        private ContentInspector $inspector,
+        private UploadDestinationAuthorizer $authorizer,
         private MessageBusInterface $bus,
     ) {
     }
 
-    public function __invoke(
-        Uuid $sessionId,
-        Uuid $actingUserId,
-        string $detectedMime,
-        MediaType $mediaType,
-        string $sha256,
-    ): MediaAsset {
+    public function __invoke(Uuid $sessionId, Uuid $actingUserId): MediaAsset
+    {
         $session = $this->sessions->get($sessionId);
 
         if (!$session->userId->equals($actingUserId)) {
@@ -40,14 +36,19 @@ final readonly class FinalizeUpload
             throw new \DomainException('Upload session has expired.');
         }
 
-        $session->beginFinalization();
+        // Authorization is deliberately repeated at finalization time. A user
+        // may have lost access to the destination after creating the session.
+        $this->authorizer->assertCanUpload($actingUserId, $session->targetCollectionId);
 
         $temporary = new StorageObjectId('media', $session->temporaryStorageKey);
-        $received = $this->storage->stat($temporary);
+        $content = $this->inspector->inspect($temporary);
 
-        if ($received->byteSize !== $session->expectedSize) {
+        if ($content->byteSize !== $session->expectedSize) {
             throw new \DomainException('Received upload size does not match expected size.');
         }
+
+        $session->beginFinalization();
+        $this->sessions->save($session);
 
         $mediaId = Uuid::v7();
         $permanent = new StorageObjectId('media', sprintf('originals/%s/source', $mediaId->toRfc4122()));
@@ -58,10 +59,10 @@ final readonly class FinalizeUpload
             $actingUserId,
             $permanent,
             $session->originalFilename,
-            $detectedMime,
-            $mediaType,
+            $content->mimeType,
+            $content->mediaType,
             $stored->byteSize,
-            $sha256,
+            $content->sha256,
         );
 
         $this->media->save($asset);
