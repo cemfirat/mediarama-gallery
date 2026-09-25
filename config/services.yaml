@@ -126,3 +126,11 @@ services:
 
     Mediarama\Media\Application\MediaSearch:
         alias: Mediarama\Media\Infrastructure\Persistence\DbalMediaSearch
+
+
+    Mediarama\Security\Application\CurrentUser:
+        alias: Mediarama\Security\Infrastructure\Http\RequestCurrentUser
+
+    Mediarama\Security\Infrastructure\Http\DevelopmentActorSubscriber:
+        arguments:
+            $appEnvironment: '%kernel.environment%'
