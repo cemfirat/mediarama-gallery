@@ -116,3 +116,11 @@ services:
                 - !service
                     class: Mediarama\Media\Application\ImageDerivativeProfile
                     arguments: ['large', 2560, 2560, 'webp', 86, false]
+
+
+    Mediarama\Media\Application\InspectImageGeometry:
+        alias: Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector
+
+    Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector:
+        arguments:
+            $identifyBinary: '%env(default:identify:IMAGEMAGICK_IDENTIFY_BINARY)%'
