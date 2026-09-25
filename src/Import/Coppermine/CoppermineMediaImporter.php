@@ -101,11 +101,11 @@ final readonly class CoppermineMediaImporter
 INSERT INTO media_assets (
     id, owner_id, storage_disk, storage_key, original_filename, mime_type, media_type,
     byte_size, checksum_sha256, width, height, title, description,
-    processing_state, moderation_state, metadata, created_at, updated_at
+    processing_state, moderation_state, metadata, metadata_provenance, created_at, updated_at
 ) VALUES (
     :id, :owner_id, 'media', :storage_key, :filename, :mime_type, :media_type,
     :byte_size, :checksum, :width, :height, :title, :description,
-    'uploaded', :moderation_state, :metadata::jsonb, :created_at, NOW()
+    'uploaded', :moderation_state, '{}'::jsonb, :metadata_provenance::jsonb, :created_at, NOW()
 )
 SQL,
                         [
@@ -122,14 +122,10 @@ SQL,
                             'title' => trim((string) $row['title']) !== '' ? (string) $row['title'] : null,
                             'description' => trim((string) $row['caption']) !== '' ? (string) $row['caption'] : null,
                             'moderation_state' => (string) $row['approved'] === 'YES' ? 'published' : 'pending_review',
-                            'metadata' => json_encode([
-                                'import' => [
-                                    'source' => 'coppermine',
-                                    'picture_id' => (int) $row['pid'],
-                                    'filepath' => (string) $row['filepath'],
-                                    'keywords' => (string) $row['keywords'],
-                                ],
-                            ], JSON_THROW_ON_ERROR),
+                            'metadata_provenance' => json_encode(array_filter([
+                                'title' => trim((string) $row['title']) !== '' ? 'coppermine_import' : null,
+                                'description' => trim((string) $row['caption']) !== '' ? 'coppermine_import' : null,
+                            ]), JSON_THROW_ON_ERROR),
                             'created_at' => $createdAt->format(DATE_ATOM),
                         ],
                     );
