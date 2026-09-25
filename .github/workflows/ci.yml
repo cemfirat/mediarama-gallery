@@ -144,3 +144,10 @@ jobs:
               }
           }
           PHP
+
+      - name: Verify Coppermine 1.7 capability detection
+        run: |
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            < tests/Fixtures/Coppermine/1.7-variation.sql
+          php bin/console mediarama:import:coppermine:inspect | tee /tmp/coppermine-inspect.txt
+          grep -F "Detected: 1.7.x-compatible" /tmp/coppermine-inspect.txt
