@@ -150,3 +150,71 @@ For each one, the final migration policy must document:
 ## Exit condition
 
 Issue #8 cannot be treated as migration-complete until every row in this matrix has a final classification and all **Blocking gap** entries are resolved or explicitly accepted as unsupported with preflight failure/warning behavior.
+
+
+## Album visibility/password-specific migration risks
+
+The deeper access-control audit adds several migration rules that are not represented by the basic albums table mapping alone.
+
+### Visibility integer must be decoded, not copied
+
+Coppermine `albums.visibility` mixes principal types:
+
+- `0` public;
+- ordinary group IDs;
+- `FIRST_USER_CAT + user_id` user/private visibility.
+
+Mediarama must transform these to explicit resource ACLs and fail closed when a principal cannot be mapped.
+
+### Password-bearing albums
+
+A source album password is an alternate access mechanism for an otherwise restricted album.
+
+Migration classification: **Transform**.
+
+Required target behavior:
+
+- preserve the fact that password protection existed;
+- preserve/review the hint;
+- do not reuse the MD5 source password hash;
+- do not import browser unlock cookies;
+- keep the target restricted until a new password/policy is set.
+
+The existing ACL importer already follows this direction by requiring a password reset/replacement.
+
+### Global private-album switch
+
+`allow_private_albums` changes effective runtime behavior.
+
+Migration must report the source value and should use fail-closed target rules rather than publishing non-zero visibility rows due to a source-global switch.
+
+### Moderator-group residue
+
+`albums.moderator_group` remains in schema/runtime code, but current 1.6 disables normal persistence of the feature and the updater resets values to zero.
+
+Migration classification: **Blocking review when non-zero**.
+
+Preflight must count non-zero rows. A non-zero value may indicate:
+
+- historical residue;
+- an old installation not fully updated;
+- plugin/custom code that re-enabled the feature.
+
+Do not grant Mediarama moderator rights from this field automatically.
+
+## Identity preflight gap: duplicate emails
+
+Coppermine can allow duplicate email addresses.
+
+Mediarama's current users table enforces unique non-null `CITEXT` email.
+
+Current identity import therefore has a production migration blocker for source galleries containing duplicate non-empty emails.
+
+Required preflight:
+
+- duplicate normalized email count;
+- invalid emails;
+- empty emails;
+- duplicate-email policy decision before insert.
+
+Migration must not silently rewrite user emails without a reportable rule.
