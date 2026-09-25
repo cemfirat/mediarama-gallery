@@ -126,7 +126,11 @@ jobs:
           <?php
           require 'vendor/autoload.php';
 
-          $db = Doctrine\DBAL\DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
+          $dsn = new Doctrine\DBAL\Tools\DsnParser([
+              'postgresql' => 'pdo_pgsql',
+              'postgres' => 'pdo_pgsql',
+          ]);
+          $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
           $checks = [
               'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 1,
               'restricted password-reset collection' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND visibility = 'restricted' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
