@@ -9,6 +9,16 @@ services:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
+            - '../src/**/Domain/'
+            - '../src/**/*Criteria.php'
+            - '../src/**/*Result.php'
+            - '../src/**/*Report.php'
+            - '../src/Media/Application/ImageDerivativeProfile.php'
+            - '../src/Media/Application/StoredObject.php'
+            - '../src/Media/Application/InspectedMetadata.php'
+            - '../src/Upload/Application/InspectedContent.php'
+            - '../src/Export/Application/MetadataExportPolicy.php'
+            - '../src/Security/Application/AuthenticatedUser.php'
 
     Mediarama\Media\Infrastructure\Metadata\ExifToolProcess:
         arguments:
