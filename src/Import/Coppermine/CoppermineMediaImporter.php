@@ -52,10 +52,25 @@ final readonly class CoppermineMediaImporter
 
         foreach ($rows as $row) {
             $sourceId = (string) $row['pid'];
+            $objectId = null;
+            $targetPersisted = false;
 
             try {
                 $existing = $this->mappings->findTargetId('coppermine', 'picture', $sourceId);
                 if ($existing !== null) {
+                    $state = $this->target->fetchOne(
+                        'SELECT processing_state FROM media_assets WHERE id = :id',
+                        ['id' => $existing->toRfc4122()],
+                    );
+
+                    if ($state === false) {
+                        throw new \RuntimeException('Existing picture mapping points to a missing MediaAsset.');
+                    }
+
+                    if ((string) $state !== 'ready') {
+                        $this->bus->dispatch(new ProcessMedia($existing->toRfc4122()));
+                    }
+
                     ++$skipped;
                     $this->checkpoints->save('coppermine', 'pictures', $sourceId);
                     continue;
@@ -98,7 +113,7 @@ final readonly class CoppermineMediaImporter
                     ? (new \DateTimeImmutable('@'.(int) $row['ctime']))->setTimezone(new \DateTimeZone('UTC'))
                     : new \DateTimeImmutable();
 
-                $this->target->transactional(function () use ($row, $mediaId, $ownerId, $storageKey, $stored, $inspection, $mediaType, $createdAt, $collectionId, $sourceId): void {
+                $this->target->transactional(function () use ($row, $mediaId, $ownerId, $storageKey, $inspection, $mediaType, $createdAt, $collectionId, $sourceId): void {
                     $this->target->executeStatement(
                         <<<'SQL'
 INSERT INTO media_assets (
@@ -149,11 +164,24 @@ SQL,
 
                     $this->mappings->remember('coppermine', 'picture', $sourceId, $mediaId);
                 });
+                $targetPersisted = true;
 
                 $this->bus->dispatch(new ProcessMedia($mediaId->toRfc4122()));
                 $this->checkpoints->save('coppermine', 'pictures', $sourceId);
                 ++$imported;
             } catch (\Throwable $e) {
+                if ($objectId instanceof StorageObjectId && !$targetPersisted && $this->storage->exists($objectId)) {
+                    try {
+                        $this->storage->delete($objectId);
+                    } catch (\Throwable $cleanupError) {
+                        $warnings[] = sprintf(
+                            'Picture %s cleanup failed: %s',
+                            $sourceId,
+                            $cleanupError->getMessage(),
+                        );
+                    }
+                }
+
                 ++$skipped;
                 $warnings[] = sprintf('Picture %s: %s', $sourceId, $e->getMessage());
                 // Do not advance the checkpoint past a failed source row. This makes
