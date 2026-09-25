@@ -16,6 +16,7 @@ final readonly class UploadStatusController
     public function __construct(
         private UploadSessionRepository $sessions,
         private ChunkStorage $chunks,
+        private CurrentUser $currentUser,
     ) {
     }
 
@@ -23,7 +24,7 @@ final readonly class UploadStatusController
     public function __invoke(string $id, Request $request): JsonResponse
     {
         $session = $this->sessions->get(Uuid::fromString($id));
-        $actor = Uuid::fromString((string) $request->headers->get('X-Mediarama-User'));
+        $actor = $this->currentUser->requireUser()->id;
 
         if (!$session->userId->equals($actor)) {
             throw new \DomainException('Upload session does not belong to the acting user.');
