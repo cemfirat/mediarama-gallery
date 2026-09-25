@@ -241,6 +241,9 @@ Architecture:
 - [ADR-0003 — Storage and immutable originals](docs/adr/0003-storage-and-originals.md)
 - [ADR-0004 — Processing and moderation states](docs/adr/0004-processing-and-moderation.md)
 - [ADR-0005 — UIkit presentation boundary](docs/adr/0005-uikit-presentation.md)
+- [ADR-0006 — Symfony 7.4 LTS, PHP 8.5 and Doctrine](docs/adr/0006-symfony-php-doctrine.md)
+- [Initial PostgreSQL Schema](docs/architecture/database-schema.md)
+- [Media Storage Contract](docs/architecture/media-storage.md)
 
 The current working hypothesis is to build a new Mediarama core, use the actively maintained Coppermine 1.6.x line as the primary functional and migration reference, and use selected 1.7.x Theme2/responsive work as additional UX research. This remains subject to the remaining discovery work and formal architecture decisions.
 
