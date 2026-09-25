@@ -276,3 +276,68 @@ The importer must map the **current effective asset state**, not assume every Co
 Coppermine's editing features are useful product knowledge, but they reinforce Mediarama's decision to diverge technically:
 
 > Coppermine often treats filesystem files as mutable working state; Mediarama should treat the original as immutable and edits as explicit metadata/recipes/derivatives.
+
+
+## Copy vs move vs replace
+
+A targeted audit of:
+
+- `editpics.php`
+- `edit_one_pic.php`
+- `picmgr.php`
+- `displayimage.php`
+- language/action labels
+- the official current 1.6 Files and Albums manuals
+
+finds a useful distinction.
+
+### Move
+
+Coppermine has a first-class **move-to-another-album** operation.
+
+The editor changes the picture's `aid`.
+
+Official documentation explicitly states that moving a picture between albums is a database operation: the physical file is not moved on the server.
+
+For HTTP-uploaded files this means an album move does not imply a storage-path move.
+
+### Show in multiple albums
+
+Coppermine does **not** need to duplicate a file to show it in multiple albums.
+
+The documented mechanism is album-keyword linking:
+
+- one source picture row/file remains native to its original album;
+- keyword matching makes it appear in additional albums.
+
+This reinforces the Mediarama migration rule to materialize effective linked membership into `collection_media` rather than cloning MediaAssets.
+
+### Copy
+
+No first-class core "copy this media into another album as a second independent media/file" action was found in the audited editor/manager surfaces or current Files/Albums manual.
+
+The supported user outcome "same file in multiple albums" is explicitly handled through keyword linking rather than physical/database duplication.
+
+Therefore Mediarama does **not** need a Coppermine-compatibility copy primitive for migration parity.
+
+Mediarama may still offer an explicit duplicate/copy feature later if useful, but that would be a Mediarama product feature, not a required Coppermine semantic.
+
+### Replace binary with an arbitrary new upload
+
+No first-class core editor action was found that uploads an arbitrary new source binary and swaps it into an existing picture row while preserving that picture identity.
+
+The built-in image editor can destructively save transformations of the current image, and admin tools can regenerate corrupt derivatives.
+
+Those are different from "replace source file with a new upload".
+
+### Mediarama consequence
+
+Keep these operations distinct:
+
+- **move** → collection membership convenience;
+- **link/add to collection** → n:m membership, no asset copy;
+- **duplicate asset** → optional explicit Mediarama feature;
+- **edit image** → non-destructive recipe/derivatives where possible;
+- **replace original** → if ever supported, a deliberate version/replacement workflow with provenance, not an implicit file overwrite.
+
+This closes the core add/edit/move/copy/delete/replace behavior inventory at the product-semantics level.
