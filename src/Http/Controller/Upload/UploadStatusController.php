@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Mediarama\Http\Controller\Upload;
+
+use Mediarama\Upload\Application\ChunkStorage;
+use Mediarama\Upload\Application\UploadSessionRepository;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
+
+final readonly class UploadStatusController
+{
+    public function __construct(
+        private UploadSessionRepository $sessions,
+        private ChunkStorage $chunks,
+    ) {
+    }
+
+    #[Route('/api/uploads/{id}', name: 'upload_status', methods: ['GET'])]
+    public function __invoke(string $id, Request $request): JsonResponse
+    {
+        $session = $this->sessions->get(Uuid::fromString($id));
+        $actor = Uuid::fromString((string) $request->headers->get('X-Mediarama-User'));
+
+        if (!$session->userId->equals($actor)) {
+            throw new \DomainException('Upload session does not belong to the acting user.');
+        }
+
+        return new JsonResponse([
+            'id' => $session->id->toRfc4122(),
+            'status' => $session->status->value,
+            'expected_size' => $session->expectedSize,
+            'chunks' => array_map(static fn ($chunk): array => [
+                'index' => $chunk->index,
+                'offset' => $chunk->offset,
+                'size' => $chunk->size,
+                'checksum_sha256' => $chunk->checksumSha256,
+            ], $this->chunks->listChunks($session->id)),
+        ]);
+    }
+}
