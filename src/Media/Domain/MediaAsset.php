@@ -250,6 +250,17 @@ final class MediaAsset
         $this->updatedAt = new DateTimeImmutable();
     }
 
+    public function setImageGeometry(int $width, int $height): void
+    {
+        if ($width < 1 || $height < 1) {
+            throw new \InvalidArgumentException('Image dimensions must be positive.');
+        }
+
+        $this->width = $width;
+        $this->height = $height;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
     public function markReady(): void
     {
         $this->processingState = ProcessingState::Ready;
