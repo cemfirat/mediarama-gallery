@@ -37,8 +37,11 @@ jobs:
       - name: Lint PHP
         run: find src tests migrations -name '*.php' -print0 | xargs -0 -n1 php -l
 
-      - name: Validate service container configuration
-        run: php bin/console lint:container
+      - name: Validate service configuration
+        run: php bin/console lint:yaml config --parse-tags
+
+      - name: Validate routes
+        run: php bin/console debug:router --show-controllers
 
       - name: Run unit tests
         run: vendor/bin/phpunit
