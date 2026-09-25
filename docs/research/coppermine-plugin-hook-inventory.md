@@ -139,7 +139,7 @@ Before plugin architecture can be considered fully researched:
 - map parameter/return contracts for every high-value hook;
 - identify dynamically constructed hook names not caught by source search or the bundled visible-hook plugin;
 - [x] compare the bundled visible-hook registry across 1.6 and 1.7;
-- compare 1.6 vs 1.7 plugin-manager behavior;
+- [x] compare 1.6 vs 1.7 plugin-manager behavior;
 - classify which Coppermine plugin capabilities deserve first-class Mediarama extension APIs.
 
 
@@ -263,3 +263,16 @@ The visible 1.7 changes are primarily PHP-modernization syntax, for example:
 The core lifecycle/order model remains the same.
 
 This supports the conclusion that 1.7 does not provide a redesigned extension architecture for Mediarama to inherit.
+
+
+## Plugin manager/sample branch comparison
+
+The following checked files are byte-identical between current 1.6 and 1.7:
+
+- `pluginmgr.php`
+- `plugins/sample/codebase.php`
+- `plugins/sample/configuration.php`
+
+Therefore the ordinary plugin-manager workflow and bundled sample plugin do not represent a 1.7 architectural evolution.
+
+For Mediarama, the extension-system design should be based on the useful outcomes documented above, not on an assumption that 1.7 contains a newer plugin model.
