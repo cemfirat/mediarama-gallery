@@ -122,3 +122,7 @@ services:
                 - '@mediarama.media.profile.thumbnail'
                 - '@mediarama.media.profile.preview'
                 - '@mediarama.media.profile.large'
+
+
+    Mediarama\Media\Application\MediaSearch:
+        alias: Mediarama\Media\Infrastructure\Persistence\DbalMediaSearch
