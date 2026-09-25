@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Mediarama\Http\Controller\Upload;
 
+use Mediarama\Security\Application\CurrentUser;
 use Mediarama\Upload\Application\ChunkStorage;
 use Mediarama\Upload\Application\UploadSessionRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
