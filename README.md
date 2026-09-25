@@ -1,5 +1,7 @@
 # Mediarama
 
+Official domain: **https://mediarama.gallery**
+
 Mediarama is a modern photo and video gallery platform inspired by the proven feature set and workflows of [Coppermine Photo Gallery](https://coppermine-gallery.net/).
 
 The project is **not intended to be a visual reskin of Coppermine**. The goal is to understand what Coppermine does well, compare its current development lines, identify architectural and technical legacy, and use those findings to design a maintainable, modern media gallery platform.
