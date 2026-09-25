@@ -109,8 +109,10 @@ jobs:
         run: |
           mkdir -p /tmp/coppermine-albums/userpics
           convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample.jpg
-          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine             < tests/Fixtures/Coppermine/1.6-minimal.sql
-          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "CREATE USER IF NOT EXISTS 'readonly'@'%' IDENTIFIED BY 'readonly'; GRANT SELECT ON coppermine.* TO 'readonly'@'%'; FLUSH PRIVILEGES;"
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            < tests/Fixtures/Coppermine/1.6-minimal.sql
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root \
+            -e "CREATE USER IF NOT EXISTS 'readonly'@'%' IDENTIFIED BY 'readonly'; GRANT SELECT ON coppermine.* TO 'readonly'@'%'; FLUSH PRIVILEGES;"
 
       - name: Run end-to-end Coppermine migration
         run: php bin/console mediarama:import:coppermine
@@ -120,20 +122,25 @@ jobs:
 
       - name: Verify migrated fixture
         run: |
-          php -r '
-          require "vendor/autoload.php";
-          $db = Doctrine\DBAL\DriverManager::getConnection(["url" => getenv("DATABASE_URL")]);
+          php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+
+          $db = Doctrine\DBAL\DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
           $checks = [
-              "ready media" => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = '''ready'''") === 1,
-              "restricted password-reset collection" => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = '''Fixture Album''' AND visibility = '''restricted''' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
-              "tags" => (int) $db->fetchOne("SELECT COUNT(*) FROM tags") === 2,
-              "comment" => (int) $db->fetchOne("SELECT COUNT(*) FROM comments WHERE body = '''Fixture comment'''") === 1,
-              "rating" => (int) $db->fetchOne("SELECT COUNT(*) FROM ratings WHERE value = 4") === 1,
-              "reset-required user" => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = '''fixture-user''' AND status = '''password_reset_required'''") === 1,
-              "empty async queue" => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = '''async'''") === 0,
+              'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 1,
+              'restricted password-reset collection' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND visibility = 'restricted' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
+              'tags' => (int) $db->fetchOne('SELECT COUNT(*) FROM tags') === 2,
+              'comment' => (int) $db->fetchOne("SELECT COUNT(*) FROM comments WHERE body = 'Fixture comment'") === 1,
+              'rating' => (int) $db->fetchOne('SELECT COUNT(*) FROM ratings WHERE value = 4') === 1,
+              'reset-required user' => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = 'fixture-user' AND status = 'password_reset_required'") === 1,
+              'empty async queue' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,
           ];
+
           foreach ($checks as $name => $ok) {
-              echo ($ok ? "OK " : "FAIL ").$name.PHP_EOL;
-              if (!$ok) { exit(1); }
+              echo ($ok ? 'OK ' : 'FAIL ').$name.PHP_EOL;
+              if (!$ok) {
+                  exit(1);
+              }
           }
-          '
+          PHP
