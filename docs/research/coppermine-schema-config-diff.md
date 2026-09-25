@@ -11,43 +11,57 @@ Primary sources:
 
 ## Table inventory
 
-Both schema files define the same 20 core table names:
+Both schema files define the same 22 core table names:
 
 1. albums
 2. banned
 3. bridge
 4. categories
-5. comments
-6. config
-7. dict
-8. ecards
-9. exif
-10. favpics
-11. hit_stats
-12. languages
-13. pictures
-14. plugins
-15. sessions
-16. temp_messages
-17. usergroups
-18. users
-19. votes
-20. vote_stats
+5. categorymap
+6. comments
+7. config
+8. dict
+9. ecards
+10. exif
+11. favpics
+12. filetypes
+13. hit_stats
+14. languages
+15. pictures
+16. plugins
+17. sessions
+18. temp_messages
+19. usergroups
+20. users
+21. votes
+22. vote_stats
 
 This is important: 1.7 does **not** introduce a new normalized data model.
 
 ## Field-level schema difference
 
-A column-name comparison of every core table finds one structural table difference:
+A full normalized table-definition comparison finds three structural differences in the current checked schemas.
 
 ### `pictures`
 
 1.7 adds:
 
-- `mime`
-- `ftype`
+- `mime varchar(255) NOT NULL default 'image/*'`
+- `ftype varchar(32) NOT NULL default 'image'`
 
-No other core table adds/removes a column in the checked schema files.
+### `hit_stats.ip`
+
+- current 1.6: `varchar(40)`
+- 1.7: `varchar(20)`
+
+### `vote_stats.ip`
+
+- current 1.6: `varchar(40)`
+- 1.7: `varchar(20)`
+
+The 1.6 update script explicitly describes the move to 40 characters as a fix to accommodate IPv6 addresses. This is a concrete example where current 1.6 contains a post-1.7 maintenance improvement that the dormant 1.7 schema did not receive.
+
+No other normalized column/index/key line differs in the checked schema definitions.
 
 This is strong evidence that 1.7's media-type work is an incremental extension of the 1.6 picture table, not a redesigned media-asset model.
 
@@ -114,7 +128,7 @@ In particular:
 
 Still required:
 
-- compare indexes, key definitions, defaults and column types, not only column names;
+- [x] compare current schema indexes, key definitions, defaults and column types at normalized definition-line level;
 - inspect every `sql/update.sql` statement historically relevant to current 1.6;
 - map config keys to actual code paths and feature flags;
 - identify deprecated-but-still-readable keys;
