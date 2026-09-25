@@ -24,3 +24,17 @@ services:
 
     Mediarama\Export\Application\MetadataWriter:
         alias: Mediarama\Export\Infrastructure\ExifToolMetadataWriter
+
+
+    Mediarama\Upload\Application\UploadSessionRepository:
+        alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadSessionRepository
+
+    Mediarama\Media\Application\MediaAssetRepository:
+        alias: Mediarama\Media\Infrastructure\Persistence\DbalMediaAssetRepository
+
+    Mediarama\Media\Infrastructure\Storage\LocalMediaStorage:
+        arguments:
+            $mediaRoot: '%env(resolve:MEDIA_STORAGE_PATH)%'
+
+    Mediarama\Media\Application\MediaStorage:
+        alias: Mediarama\Media\Infrastructure\Storage\LocalMediaStorage
