@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Mediarama\Import\Coppermine;
 
-use Doctrine\DBAL\Connection;
 use Mediarama\Import\Application\ImportSource;
 use Mediarama\Import\Application\ImportSourceReport;
 
