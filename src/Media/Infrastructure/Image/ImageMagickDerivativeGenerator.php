@@ -23,6 +23,10 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
 
     public function generate(MediaAsset $media, ImageDerivativeProfile $profile, int $processingVersion): MediaDerivative
     {
+        if ($profile->watermark) {
+            throw new \LogicException('Watermarked derivative profiles are not implemented yet.');
+        }
+
         $source = $this->storage->read($media->original);
         $input = tempnam(sys_get_temp_dir(), 'mediarama-image-in-');
         $output = tempnam(sys_get_temp_dir(), 'mediarama-image-out-');
@@ -35,9 +39,18 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
 
         try {
             $inputHandle = fopen($input, 'wb');
-            stream_copy_to_stream($source, $inputHandle);
-            fclose($inputHandle);
-            fclose($source);
+            if ($inputHandle === false) {
+                throw new \RuntimeException('Unable to open temporary image input.');
+            }
+
+            try {
+                if (stream_copy_to_stream($source, $inputHandle) === false) {
+                    throw new \RuntimeException('Unable to copy image input for processing.');
+                }
+            } finally {
+                fclose($inputHandle);
+                fclose($source);
+            }
 
             $arguments = [
                 $input.'[0]',
@@ -90,7 +103,7 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
                 null,
                 [
                     'orientation_normalized' => true,
-                    'watermarked' => $profile->watermark,
+                    'watermarked' => false,
                 ],
                 $now,
                 $now,
