@@ -9,6 +9,7 @@ use Mediarama\Import\Application\ImportCheckpointRepository;
 use Mediarama\Import\Application\ImportMappingRepository;
 use Mediarama\Media\Application\ContentInspector;
 use Mediarama\Media\Application\MediaStorage;
+use Mediarama\Media\Domain\StorageObjectId;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class CoppermineMediaImporter
@@ -68,7 +69,20 @@ final readonly class CoppermineMediaImporter
                 $inspection = $this->inspector->inspect($path);
                 $mediaId = Uuid::v7();
                 $storageKey = sprintf('originals/%s/%s', $mediaId->toRfc4122(), basename((string) $row['filename']));
-                $stored = $this->storage->putFile($storageKey, $path);
+                $stream = fopen($path, 'rb');
+                if ($stream === false) {
+                    throw new \RuntimeException('Unable to open Coppermine original: '.$path);
+                }
+
+                try {
+                    $stored = $this->storage->write(
+                        new StorageObjectId('local', $storageKey),
+                        $stream,
+                        $inspection->mimeType,
+                    );
+                } finally {
+                    fclose($stream);
+                }
 
                 $ownerId = (int) $row['owner_id'] > 0
                     ? $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner_id'])
