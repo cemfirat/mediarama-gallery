@@ -11,6 +11,8 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class CoppermineCollectionImporter
 {
+    private const FIRST_USER_CAT = 10000;
+
     public function __construct(
         private CoppermineConnectionFactory $sourceFactory,
         private Connection $target,
@@ -99,9 +101,23 @@ SQL,
             $sourceId = (string) $row['aid'];
             $targetId = $this->mappings->findTargetId('coppermine', 'album', $sourceId) ?? Uuid::v7();
             $ownerId = $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner']);
-            $parentId = (int) $row['category'] > 0
-                ? $this->mappings->findTargetId('coppermine', 'category', (string) $row['category'])
-                : null;
+            $categoryId = (int) $row['category'];
+            $parentId = null;
+
+            if ($categoryId > 0 && $categoryId < self::FIRST_USER_CAT) {
+                $parentId = $this->mappings->findTargetId('coppermine', 'category', (string) $categoryId);
+                if ($parentId === null) {
+                    throw new \RuntimeException(sprintf(
+                        'Coppermine album %s references category %d which has not been imported.',
+                        $sourceId,
+                        $categoryId,
+                    ));
+                }
+            }
+
+            // Categories >= FIRST_USER_CAT are Coppermine's virtual per-user gallery
+            // namespace, not normal category rows. Their albums become owned root
+            // collections instead of inventing synthetic source categories.
 
             // Coppermine visibility=0 means public. Other values encode group/user
             // restrictions and are imported conservatively until ACL conversion.
