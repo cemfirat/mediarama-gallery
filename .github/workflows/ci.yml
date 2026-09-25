@@ -12,7 +12,38 @@ jobs:
   php:
     name: PHP validate and test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: mediarama
+          POSTGRES_USER: mediarama
+          POSTGRES_PASSWORD: mediarama
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mediarama -d mediarama"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      APP_ENV: test
+      APP_DEBUG: 0
+      APP_SECRET: mediarama-ci-only
+      DATABASE_URL: postgresql://mediarama:mediarama@127.0.0.1:5432/mediarama?serverVersion=18&charset=utf8
+      MESSENGER_TRANSPORT_DSN: doctrine://default?queue_name=async&auto_setup=false
+      MEDIA_STORAGE_PATH: /tmp/mediarama-media
+      EXIFTOOL_BINARY: exiftool
+      IMAGEMAGICK_BINARY: convert
+      IMAGEMAGICK_IDENTIFY_BINARY: identify
+      UPLOAD_MAX_ASSET_BYTES: 2147483648
+      UPLOAD_MAX_CHUNK_BYTES: 16777216
+      COPPERMINE_DATABASE_URL: mysql://readonly:readonly@127.0.0.1:3306/coppermine
+      COPPERMINE_TABLE_PREFIX: cpg_
+      COPPERMINE_ALBUMS_ROOT: /tmp/coppermine-albums
 
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +75,18 @@ jobs:
           foreach (glob("config/*.yaml") as $file) { Symfony\Component\Yaml\Yaml::parseFile($file, Symfony\Component\Yaml\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
           foreach (glob("config/packages/*.yaml") as $file) { Symfony\Component\Yaml\Yaml::parseFile($file, Symfony\Component\Yaml\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
           '
+
+      - name: Validate Symfony container
+        run: php bin/console lint:container
+
+      - name: Validate routes
+        run: php bin/console debug:router --show-controllers
+
+      - name: Run PostgreSQL migrations
+        run: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+      - name: Show migration status
+        run: php bin/console doctrine:migrations:status
 
       - name: Run unit tests
         run: vendor/bin/phpunit
