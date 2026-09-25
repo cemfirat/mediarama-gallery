@@ -12,6 +12,8 @@ final readonly class CreateUploadSession
     public function __construct(
         private UploadSessionRepository $sessions,
         private UploadDestinationAuthorizer $authorizer,
+        private UploadPolicy $policy,
+        private UploadQuota $quota,
     ) {
     }
 
@@ -23,6 +25,8 @@ final readonly class CreateUploadSession
         ?string $expectedMime = null,
     ): UploadSession {
         $this->authorizer->assertCanUpload($userId, $targetCollectionId);
+        $this->policy->assertAssetSize($expectedSize);
+        $this->quota->reserve($userId, $expectedSize);
 
         $session = UploadSession::create(
             $userId,
