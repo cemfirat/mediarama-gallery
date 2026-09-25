@@ -1,0 +1,10 @@
+framework:
+    secret: '%env(APP_SECRET)%'
+    router:
+        utf8: true
+    session: true
+    messenger:
+        failure_transport: failed
+        transports:
+            async: '%env(MESSENGER_TRANSPORT_DSN)%'
+            failed: 'doctrine://default?queue_name=failed'
