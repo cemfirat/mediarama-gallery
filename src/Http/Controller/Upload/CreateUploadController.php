@@ -12,7 +12,7 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class CreateUploadController
 {
-    public function __construct(private CreateUploadSession $create)
+    public function __construct(private CreateUploadSession $create, private CurrentUser $currentUser)
     {
     }
 
@@ -21,8 +21,7 @@ final readonly class CreateUploadController
     {
         $payload = $request->toArray();
 
-        // Authentication integration will replace this explicit actor header.
-        $userId = Uuid::fromString((string) $request->headers->get('X-Mediarama-User'));
+        $userId = $this->currentUser->requireUser()->id;
         $collectionId = isset($payload['collection_id']) && $payload['collection_id'] !== null
             ? Uuid::fromString((string) $payload['collection_id'])
             : null;
