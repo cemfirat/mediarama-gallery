@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Mediarama\Import\Application\ImportCheckpointRepository;
 use Mediarama\Import\Application\ImportMappingRepository;
 use Mediarama\Upload\Application\ContentInspector;
+use Mediarama\Upload\Application\UploadContentPolicy;
 use Mediarama\Media\Application\MediaStorage;
 use Mediarama\Media\Domain\StorageObjectId;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -25,6 +26,7 @@ final readonly class CoppermineMediaImporter
         private CoppermineFileLocator $files,
         private MediaStorage $storage,
         private ContentInspector $inspector,
+        private UploadContentPolicy $contentPolicy,
         private MessageBusInterface $bus,
     ) {
     }
@@ -84,6 +86,7 @@ final readonly class CoppermineMediaImporter
                 }
 
                 $inspection = $this->inspector->inspect($objectId);
+                $this->contentPolicy->assertAllowed($inspection);
 
                 $ownerId = (int) $row['owner_id'] > 0
                     ? $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner_id'])
