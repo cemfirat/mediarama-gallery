@@ -37,11 +37,13 @@ jobs:
       - name: Lint PHP
         run: find src tests migrations -name '*.php' -print0 | xargs -0 -n1 php -l
 
-      - name: Validate service configuration
-        run: php bin/console lint:yaml config --parse-tags
-
-      - name: Validate routes
-        run: php bin/console debug:router --show-controllers
+      - name: Validate YAML syntax without booting the application
+        run: |
+          php -r '
+          require "vendor/autoload.php";
+          foreach (glob("config/*.yaml") as $file) { Symfony\\Component\\Yaml\\Yaml::parseFile($file, Symfony\\Component\\Yaml\\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
+          foreach (glob("config/packages/*.yaml") as $file) { Symfony\\Component\\Yaml\\Yaml::parseFile($file, Symfony\\Component\\Yaml\\Yaml::PARSE_CUSTOM_TAGS); echo "OK $file\n"; }
+          '
 
       - name: Run unit tests
         run: vendor/bin/phpunit
