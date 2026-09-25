@@ -10,10 +10,9 @@ services:
         exclude:
             - '../src/Kernel.php'
 
-
     Mediarama\Media\Infrastructure\Metadata\ExifToolProcess:
         arguments:
-            $binary: '%env(default:exiftool:EXIFTOOL_BINARY)%'
+            $binary: '%env(EXIFTOOL_BINARY)%'
 
     Mediarama\Media\Infrastructure\Metadata\LocalExifToolInspector:
         arguments:
@@ -24,7 +23,6 @@ services:
 
     Mediarama\Export\Application\MetadataWriter:
         alias: Mediarama\Export\Infrastructure\ExifToolMetadataWriter
-
 
     Mediarama\Upload\Application\UploadSessionRepository:
         alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadSessionRepository
@@ -39,10 +37,8 @@ services:
     Mediarama\Media\Application\MediaStorage:
         alias: Mediarama\Media\Infrastructure\Storage\LocalMediaStorage
 
-
     Mediarama\Upload\Application\ContentInspector:
         alias: Mediarama\Upload\Infrastructure\LocalContentInspector
-
 
     Mediarama\Collection\Application\CollectionUploadPermissionRepository:
         alias: Mediarama\Collection\Infrastructure\Persistence\DbalCollectionUploadPermissionRepository
@@ -64,7 +60,6 @@ services:
         arguments:
             $maximumAssetBytes: '%env(int:UPLOAD_MAX_ASSET_BYTES)%'
             $maximumChunkBytes: '%env(int:UPLOAD_MAX_CHUNK_BYTES)%'
-
 
     Mediarama\Upload\Application\UploadFinalizationRepository:
         alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadFinalizationRepository
@@ -88,10 +83,8 @@ services:
                 - 'audio/ogg'
                 - 'audio/flac'
 
-
     Mediarama\Upload\Application\ExpiredUploadSessionRepository:
         alias: Mediarama\Upload\Infrastructure\Persistence\DbalExpiredUploadSessionRepository
-
 
     Mediarama\Media\Application\MediaDerivativeRepository:
         alias: Mediarama\Media\Infrastructure\Persistence\DbalMediaDerivativeRepository
@@ -101,26 +94,31 @@ services:
 
     Mediarama\Media\Infrastructure\Image\ImageMagickProcess:
         arguments:
-            $binary: '%env(default:imagemagick:IMAGEMAGICK_BINARY)%'
-
-    Mediarama\Media\Application\GenerateImageDerivatives:
-        arguments:
-            $processingVersion: 1
-            $profiles:
-                - !service
-                    class: Mediarama\Media\Application\ImageDerivativeProfile
-                    arguments: ['thumbnail', 480, 480, 'webp', 82, false]
-                - !service
-                    class: Mediarama\Media\Application\ImageDerivativeProfile
-                    arguments: ['preview', 1600, 1600, 'webp', 84, false]
-                - !service
-                    class: Mediarama\Media\Application\ImageDerivativeProfile
-                    arguments: ['large', 2560, 2560, 'webp', 86, false]
-
+            $binary: '%env(IMAGEMAGICK_BINARY)%'
 
     Mediarama\Media\Application\InspectImageGeometry:
         alias: Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector
 
     Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector:
         arguments:
-            $identifyBinary: '%env(default:identify:IMAGEMAGICK_IDENTIFY_BINARY)%'
+            $identifyBinary: '%env(IMAGEMAGICK_IDENTIFY_BINARY)%'
+
+    mediarama.media.profile.thumbnail:
+        class: Mediarama\Media\Application\ImageDerivativeProfile
+        arguments: ['thumbnail', 480, 480, 'webp', 82, false]
+
+    mediarama.media.profile.preview:
+        class: Mediarama\Media\Application\ImageDerivativeProfile
+        arguments: ['preview', 1600, 1600, 'webp', 84, false]
+
+    mediarama.media.profile.large:
+        class: Mediarama\Media\Application\ImageDerivativeProfile
+        arguments: ['large', 2560, 2560, 'webp', 86, false]
+
+    Mediarama\Media\Application\GenerateImageDerivatives:
+        arguments:
+            $processingVersion: 1
+            $profiles:
+                - '@mediarama.media.profile.thumbnail'
+                - '@mediarama.media.profile.preview'
+                - '@mediarama.media.profile.large'
