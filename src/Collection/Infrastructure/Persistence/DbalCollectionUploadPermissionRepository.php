@@ -31,13 +31,24 @@ final readonly class DbalCollectionUploadPermissionRepository implements Collect
         $allowed = $this->connection->fetchOne(
             <<<'SQL'
 SELECT 1
-FROM user_groups ug
-JOIN group_permissions gp ON gp.group_id = ug.group_id
-WHERE ug.user_id = :user
-  AND gp.permission_key = 'collection.media.add'
+FROM collection_access ca
+WHERE ca.collection_id = :collection
+  AND ca.capability = 'collection.media.add'
+  AND ca.effect = 'allow'
+  AND (
+      ca.user_id = :user
+      OR ca.group_id IN (
+          SELECT ug.group_id
+          FROM user_groups ug
+          WHERE ug.user_id = :user
+      )
+  )
 LIMIT 1
 SQL,
-            ['user' => $userId->toRfc4122()],
+            [
+                'collection' => $collectionId->toRfc4122(),
+                'user' => $userId->toRfc4122(),
+            ],
         );
 
         return $allowed !== false;
