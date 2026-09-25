@@ -30,6 +30,19 @@ final class MediaAsset
         public ?string $description = null,
         public ?DateTimeImmutable $capturedAt = null,
         public array $metadata = [],
+        public array $metadataProvenance = [],
+        public ?string $creator = null,
+        public ?string $copyright = null,
+        public ?string $cameraMake = null,
+        public ?string $cameraModel = null,
+        public ?string $lens = null,
+        public ?int $iso = null,
+        public ?string $aperture = null,
+        public ?string $exposureTime = null,
+        public ?string $focalLength = null,
+        public ?float $latitude = null,
+        public ?float $longitude = null,
+        public ?string $locationName = null,
     ) {
         if ($byteSize < 0) {
             throw new \InvalidArgumentException('Media byte size must not be negative.');
@@ -93,6 +106,73 @@ final class MediaAsset
             $checksumSha256,
             $metadata,
         );
+    }
+
+
+    /**
+     * @param array<string, mixed> $embedded
+     * @param array<string, mixed> $canonical
+     */
+    public function applyEmbeddedMetadata(
+        array $embedded,
+        array $canonical,
+        MetadataProvenance $provenance,
+    ): void {
+        $this->metadata = $embedded;
+
+        foreach ($canonical as $field => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $property = match ($field) {
+                'captured_at' => 'capturedAt',
+                'camera_make' => 'cameraMake',
+                'camera_model' => 'cameraModel',
+                'exposure_time' => 'exposureTime',
+                'focal_length' => 'focalLength',
+                'location_name' => 'locationName',
+                default => $field,
+            };
+
+            if (!property_exists($this, $property)) {
+                continue;
+            }
+
+            if ($this->{$property} === null || $this->{$property} === '') {
+                $this->{$property} = $value;
+                $this->metadataProvenance[$field] = $provenance->value;
+            }
+        }
+
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function editMetadata(string $field, mixed $value): void
+    {
+        $property = match ($field) {
+            'captured_at' => 'capturedAt',
+            'camera_make' => 'cameraMake',
+            'camera_model' => 'cameraModel',
+            'exposure_time' => 'exposureTime',
+            'focal_length' => 'focalLength',
+            'location_name' => 'locationName',
+            default => $field,
+        };
+
+        $editable = [
+            'title', 'description', 'capturedAt', 'creator', 'copyright',
+            'cameraMake', 'cameraModel', 'lens', 'iso', 'aperture',
+            'exposureTime', 'focalLength', 'latitude', 'longitude', 'locationName',
+        ];
+
+        if (!in_array($property, $editable, true)) {
+            throw new \InvalidArgumentException(sprintf('Metadata field "%s" is not editable.', $field));
+        }
+
+        $this->{$property} = $value;
+        $this->metadataProvenance[$field] = MetadataProvenance::User->value;
+        $this->updatedAt = new DateTimeImmutable();
     }
 
     public function markReady(): void
