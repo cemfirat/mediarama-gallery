@@ -1,0 +1,16 @@
+{
+  "name": "mediarama-gallery",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build:css": "lessc assets/less/app.less public/build/app.css --clean-css",
+    "watch:css": "lessc assets/less/app.less public/build/app.css --source-map"
+  },
+  "dependencies": {
+    "uikit": "^3.25.12"
+  },
+  "devDependencies": {
+    "less": "^4.2.2",
+    "less-plugin-clean-css": "^1.6.0"
+  }
+}
