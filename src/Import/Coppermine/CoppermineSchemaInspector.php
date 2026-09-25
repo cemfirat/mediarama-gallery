@@ -24,7 +24,7 @@ final readonly class CoppermineSchemaInspector implements ImportSource
     {
         $source = $this->sourceFactory->create();
         $tables = $source->createSchemaManager()->listTableNames();
-        $required = ['pictures', 'albums', 'users', 'usergroups', 'comments', 'votes'];
+        $required = ['pictures', 'albums', 'categories', 'users', 'usergroups', 'comments', 'votes', 'vote_stats', 'config'];
         $warnings = [];
         $counts = [];
 
