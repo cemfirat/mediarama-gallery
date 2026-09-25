@@ -12,7 +12,6 @@
     "ext-iconv": "*",
     "ext-json": "*",
     "ext-pdo": "*",
-    "ext-pdo_pgsql": "*",
     "league/flysystem": "^3.30",
     "league/flysystem-aws-s3-v3": "^3.30",
     "php": "^8.5",
