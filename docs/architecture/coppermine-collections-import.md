@@ -29,3 +29,10 @@ Categories and albums have independent persistent checkpoints.
 Each imported source row gets a stable source→target UUID mapping. Rerunning the importer therefore updates/reuses the same target collection instead of duplicating it.
 
 After category creation is complete, a reconciliation pass resolves parent-category relationships.
+
+
+## Virtual user galleries
+
+Coppermine reserves category IDs from `FIRST_USER_CAT = 10000` upward for the per-user gallery namespace. Those values are not treated as missing normal category rows.
+
+Albums in that namespace are imported as owned root collections in Mediarama. Normal non-zero category IDs below `FIRST_USER_CAT` must resolve to an imported category; otherwise migration stops instead of silently flattening the hierarchy.
