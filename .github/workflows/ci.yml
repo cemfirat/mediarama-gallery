@@ -161,6 +161,62 @@ jobs:
           }
           PHP
 
+      - name: Smoke-test public gallery and derivative delivery
+        run: |
+          php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+
+          $dsn = new Doctrine\DBAL\Tools\DsnParser([
+              'postgresql' => 'pdo_pgsql',
+              'postgres' => 'pdo_pgsql',
+          ]);
+          $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
+
+          $db->executeStatement(
+              "UPDATE collections
+               SET visibility = 'public',
+                   password_protected = FALSE,
+                   password_reset_required = FALSE
+               WHERE title = 'Fixture Album'"
+          );
+
+          file_put_contents('/tmp/public_collection_id', (string) $db->fetchOne(
+              "SELECT id FROM collections WHERE title = 'Fixture Album'"
+          ));
+          file_put_contents('/tmp/public_media_id', (string) $db->fetchOne(
+              "SELECT id FROM media_assets WHERE title = 'Fixture Photo'"
+          ));
+          file_put_contents('/tmp/public_thumbnail_version', (string) $db->fetchOne(
+              "SELECT MAX(processing_version)
+               FROM media_derivatives
+               WHERE media_id = (SELECT id FROM media_assets WHERE title = 'Fixture Photo')
+                 AND profile = 'thumbnail'"
+          ));
+          PHP
+
+          php -S 127.0.0.1:8080 -t public public/index.php >/tmp/mediarama-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          sleep 1
+
+          COLLECTION_ID="$(cat /tmp/public_collection_id)"
+          MEDIA_ID="$(cat /tmp/public_media_id)"
+          THUMBNAIL_VERSION="$(cat /tmp/public_thumbnail_version)"
+
+          curl --fail --silent --show-error http://127.0.0.1:8080/collections > /tmp/collections.html
+          grep -F "Fixture Category" /tmp/collections.html
+
+          curl --fail --silent --show-error "http://127.0.0.1:8080/collections/$COLLECTION_ID" > /tmp/collection.html
+          grep -F "Fixture Photo" /tmp/collection.html
+
+          curl --fail --silent --show-error \
+            -D /tmp/thumbnail.headers \
+            "http://127.0.0.1:8080/media/$MEDIA_ID/derivatives/v$THUMBNAIL_VERSION/thumbnail" \
+            -o /tmp/thumbnail.webp
+          grep -i -F "content-type: image/webp" /tmp/thumbnail.headers
+          test -s /tmp/thumbnail.webp
+
       - name: Verify Coppermine 1.7 capability detection
         run: |
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
