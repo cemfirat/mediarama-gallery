@@ -91,3 +91,28 @@ services:
 
     Mediarama\Upload\Application\ExpiredUploadSessionRepository:
         alias: Mediarama\Upload\Infrastructure\Persistence\DbalExpiredUploadSessionRepository
+
+
+    Mediarama\Media\Application\MediaDerivativeRepository:
+        alias: Mediarama\Media\Infrastructure\Persistence\DbalMediaDerivativeRepository
+
+    Mediarama\Media\Application\ImageDerivativeGenerator:
+        alias: Mediarama\Media\Infrastructure\Image\ImageMagickDerivativeGenerator
+
+    Mediarama\Media\Infrastructure\Image\ImageMagickProcess:
+        arguments:
+            $binary: '%env(default:imagemagick:IMAGEMAGICK_BINARY)%'
+
+    Mediarama\Media\Application\GenerateImageDerivatives:
+        arguments:
+            $processingVersion: 1
+            $profiles:
+                - !service
+                    class: Mediarama\Media\Application\ImageDerivativeProfile
+                    arguments: ['thumbnail', 480, 480, 'webp', 82, false]
+                - !service
+                    class: Mediarama\Media\Application\ImageDerivativeProfile
+                    arguments: ['preview', 1600, 1600, 'webp', 84, false]
+                - !service
+                    class: Mediarama\Media\Application\ImageDerivativeProfile
+                    arguments: ['large', 2560, 2560, 'webp', 86, false]
