@@ -165,3 +165,7 @@ services:
     Mediarama\Import\Coppermine\CoppermineFileLocator:
         arguments:
             $albumsRoot: '%env(COPPERMINE_ALBUMS_ROOT)%'
+
+
+    Mediarama\Collection\Application\PublicGalleryQuery:
+        alias: Mediarama\Collection\Infrastructure\Persistence\DbalPublicGalleryQuery
