@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Mediarama\Media\Application;
 
+use Mediarama\Media\Domain\MediaType;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Uid\Uuid;
 
@@ -12,6 +13,7 @@ final readonly class ProcessMediaHandler
 {
     public function __construct(
         private InspectMediaMetadata $metadata,
+        private GenerateImageDerivatives $images,
         private MediaAssetRepository $media,
     ) {
     }
@@ -19,14 +21,29 @@ final readonly class ProcessMediaHandler
     public function __invoke(ProcessMedia $message): void
     {
         $id = Uuid::fromString($message->mediaId);
+        $asset = $this->media->get($id);
 
-        ($this->metadata)($id);
+        if ($asset->processingState->value === 'ready') {
+            return;
+        }
 
-        // Derivative generation is the next processing stage. Until that
-        // adapter is added, metadata completion is sufficient for the
-        // foundation pipeline to transition the asset to ready.
-        $media = $this->media->get($id);
-        $media->markReady();
-        $this->media->save($media);
+        try {
+            ($this->metadata)($id);
+
+            $asset = $this->media->get($id);
+
+            if ($asset->mediaType === MediaType::Image) {
+                ($this->images)($asset);
+            }
+
+            $asset->markReady();
+            $this->media->save($asset);
+        } catch (\Throwable $error) {
+            $asset = $this->media->get($id);
+            $asset->markFailed();
+            $this->media->save($asset);
+
+            throw $error;
+        }
     }
 }
