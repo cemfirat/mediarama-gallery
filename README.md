@@ -227,6 +227,7 @@ Security review, performance, accessibility, upgrade process, documentation and 
 Technical research is documented separately from the project overview:
 
 - [Coppermine 1.6.x vs 1.7.x — Technical Research](docs/research/coppermine-1.6-vs-1.7.md)
+- [Coppermine Data Model Analysis](docs/research/coppermine-data-model.md)
 
 The current working hypothesis is to build a new Mediarama core, use the actively maintained Coppermine 1.6.x line as the primary functional and migration reference, and use selected 1.7.x Theme2/responsive work as additional UX research. This remains subject to the remaining discovery work and formal architecture decisions.
 
