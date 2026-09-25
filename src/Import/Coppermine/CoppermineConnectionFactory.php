@@ -6,6 +6,7 @@ namespace Mediarama\Import\Coppermine;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Tools\DsnParser;
 
 final readonly class CoppermineConnectionFactory
 {
@@ -19,6 +20,11 @@ final readonly class CoppermineConnectionFactory
             throw new \RuntimeException('COPPERMINE_DATABASE_URL is not configured.');
         }
 
-        return DriverManager::getConnection(['url' => $this->databaseUrl]);
+        $parser = new DsnParser([
+            'mysql' => 'pdo_mysql',
+            'mariadb' => 'pdo_mysql',
+        ]);
+
+        return DriverManager::getConnection($parser->parse($this->databaseUrl));
     }
 }
