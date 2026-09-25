@@ -160,3 +160,8 @@ services:
     Mediarama\Import\Coppermine\CoppermineTablePrefix:
         arguments:
             $value: '%env(COPPERMINE_TABLE_PREFIX)%'
+
+
+    Mediarama\Import\Coppermine\CoppermineFileLocator:
+        arguments:
+            $albumsRoot: '%env(COPPERMINE_ALBUMS_ROOT)%'
