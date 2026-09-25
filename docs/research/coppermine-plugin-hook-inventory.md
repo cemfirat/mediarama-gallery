@@ -1,12 +1,16 @@
 # Coppermine plugin hook inventory
 
-Status: **verified first-pass hook inventory**
+Status: **verified source + bundled visible-hook inventory**
 Date: 2026-09-25
 Tracking: #11
 
-Primary source: direct searches for `CPGPluginAPI::action` and `CPGPluginAPI::filter` in the 1.6 and 1.7 repositories.
+Primary sources:
 
-This inventory is intentionally source-derived. It is not yet a guarantee that every dynamically constructed or indirect hook has been captured.
+- direct searches for `CPGPluginAPI::action` and `CPGPluginAPI::filter`;
+- bundled `plugins/visiblehookpoints/codebase.php` in both branches;
+- `include/plugin_api.inc.php`.
+
+The direct-call list below is intentionally narrower than the complete extension surface because many hooks are emitted through theme/helper code or are not visible through a single literal search.
 
 ## 1.6 action hooks observed
 
@@ -66,15 +70,23 @@ This inventory is intentionally source-derived. It is not yet a guarantee that e
 - `usermgr_footer`
 - `usermgr_header`
 
-## Additional 1.7 filter hooks observed in the first pass
+## Correction: bundled hook registry is the same in both branches
 
-The 1.7 source search exposes additional filter names not observed in the equivalent 1.6 search results:
+The earlier literal-search pass made `replace_forbidden_conditions`, `theme_thumbnails_footer` and `token_criteria` look 1.7-only because the current 1.6 call sites are located differently.
+
+The bundled `visiblehookpoints` plugin provides a stronger cross-check.
+
+Its declared action-hook list and filter-hook list are byte-for-byte equivalent in the checked current 1.6 and 1.7 files.
+
+That shared filter inventory explicitly includes:
 
 - `replace_forbidden_conditions`
 - `theme_thumbnails_footer`
 - `token_criteria`
 
-The shared action-hook set found in the first pass is otherwise highly similar.
+Therefore these are **not 1.7-only hook concepts**.
+
+This correction is important: 1.7 did not introduce a materially new plugin-hook surface in the checked bundled registry.
 
 ## Hook coverage by product area
 
@@ -125,7 +137,8 @@ Before plugin architecture can be considered fully researched:
 - inspect sample plugin(s) end to end;
 - identify whether hooks can stop/default behavior or only transform data;
 - map parameter/return contracts for every high-value hook;
-- identify dynamically constructed hook names not caught by source search;
+- identify dynamically constructed hook names not caught by source search or the bundled visible-hook plugin;
+- [x] compare the bundled visible-hook registry across 1.6 and 1.7;
 - compare 1.6 vs 1.7 plugin-manager behavior;
 - classify which Coppermine plugin capabilities deserve first-class Mediarama extension APIs.
 
@@ -235,3 +248,18 @@ A future extension system should also define:
 - how plugin-owned data participates in backup/migration.
 
 The last point is directly relevant to Coppermine migration: unknown installed plugins can own data outside the 22 core tables.
+
+
+## 1.6 vs 1.7 Plugin API implementation delta
+
+A normalized comparison of `include/plugin_api.inc.php` shows that the core implementation is also very close.
+
+The visible 1.7 changes are primarily PHP-modernization syntax, for example:
+
+- short array syntax;
+- `#[AllowDynamicProperties]`;
+- compact property initialization.
+
+The core lifecycle/order model remains the same.
+
+This supports the conclusion that 1.7 does not provide a redesigned extension architecture for Mediarama to inherit.
