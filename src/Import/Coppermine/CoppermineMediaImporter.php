@@ -7,7 +7,7 @@ namespace Mediarama\Import\Coppermine;
 use Doctrine\DBAL\Connection;
 use Mediarama\Import\Application\ImportCheckpointRepository;
 use Mediarama\Import\Application\ImportMappingRepository;
-use Mediarama\Media\Application\ContentInspector;
+use Mediarama\Upload\Application\ContentInspector;
 use Mediarama\Media\Application\MediaStorage;
 use Mediarama\Media\Domain\StorageObjectId;
 use Symfony\Component\Uid\Uuid;
@@ -66,31 +66,27 @@ final readonly class CoppermineMediaImporter
                     throw new \RuntimeException('Original file is missing or unreadable: '.$path);
                 }
 
-                $inspection = $this->inspector->inspect($path);
                 $mediaId = Uuid::v7();
                 $storageKey = sprintf('originals/%s/%s', $mediaId->toRfc4122(), basename((string) $row['filename']));
+                $objectId = new StorageObjectId('local', $storageKey);
                 $stream = fopen($path, 'rb');
                 if ($stream === false) {
                     throw new \RuntimeException('Unable to open Coppermine original: '.$path);
                 }
 
                 try {
-                    $stored = $this->storage->write(
-                        new StorageObjectId('local', $storageKey),
-                        $stream,
-                        $inspection->mimeType,
-                    );
+                    $stored = $this->storage->write($objectId, $stream);
                 } finally {
                     fclose($stream);
                 }
+
+                $inspection = $this->inspector->inspect($objectId);
 
                 $ownerId = (int) $row['owner_id'] > 0
                     ? $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner_id'])
                     : null;
 
-                $mediaType = str_starts_with($inspection->mimeType, 'image/') ? 'image'
-                    : (str_starts_with($inspection->mimeType, 'video/') ? 'video'
-                    : (str_starts_with($inspection->mimeType, 'audio/') ? 'audio' : 'document'));
+                $mediaType = $inspection->mediaType->value;
 
                 $createdAt = (int) $row['ctime'] > 0
                     ? (new \DateTimeImmutable('@'.(int) $row['ctime']))->setTimezone(new \DateTimeZone('UTC'))
