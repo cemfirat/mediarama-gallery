@@ -140,9 +140,70 @@ Before this area is considered complete:
 - compare cached EXIF against ExifTool for real galleries;
 - inventory all EXIF-manager selectable fields and labels;
 - verify IPTC behavior for encoding/charset edge cases;
-- inspect image-description/copyright precedence;
-- inspect custom `user1..user4` field usage/migration;
+- inspect image-description/copyright precedence for representative real files;
+- [x] inspect custom `user1..user4` field usage/migration;
 - inspect whether plugins add metadata fields or override `file_info`;
 - test metadata-heavy JPEGs;
 - test source files missing while EXIF cache remains;
 - build a migration provenance rule for Coppermine DB metadata vs embedded source.
+
+
+## XMP behavior
+
+A repository-wide source search finds no Coppermine XMP extraction/management subsystem comparable to EXIF or IPTC.
+
+The bundled JPEG parser recognizes that APP1 may contain Adobe XMP, but its code path explicitly skips non-EXIF APP1 payload data rather than parsing XMP.
+
+Therefore, in the checked 1.6/1.7 core:
+
+- EXIF is parsed/cached/display-selectable;
+- IPTC is parsed and can seed title/caption/keywords;
+- XMP is not a first-class extracted/canonical metadata source.
+
+This is a meaningful Mediarama improvement opportunity.
+
+Mediarama's ExifTool-based inspection should retain XMP as first-class structured metadata and include it in source provenance rather than reproducing Coppermine's omission.
+
+## Four custom media fields
+
+Coppermine picture rows contain:
+
+- `user1`
+- `user2`
+- `user3`
+- `user4`
+
+Their display labels are administrator-configurable through:
+
+- `user_field1_name`
+- `user_field2_name`
+- `user_field3_name`
+- `user_field4_name`
+
+These fields are editable in the per-media editor and searchable.
+
+### Migration rule
+
+Do not assume fixed semantics.
+
+Preflight should report configured labels and usage counts.
+
+Possible Mediarama mapping:
+
+- recognized, deliberately mapped labels → canonical/custom metadata field;
+- installation-specific values → structured legacy/custom metadata preserving label + value;
+- empty/unused fields → omit.
+
+## Metadata feature classification
+
+The core audit now distinguishes the complete built-in metadata families relevant to migration:
+
+- title/caption/keywords;
+- configurable custom media fields;
+- EXIF cache/display selection;
+- IPTC extraction and canonical seeding;
+- XMP present only as skipped embedded data, not parsed by core;
+- technical file/image dimensions/type;
+- owner/upload timestamps and administrative state.
+
+This is sufficient to avoid treating Coppermine metadata as "EXIF only".
