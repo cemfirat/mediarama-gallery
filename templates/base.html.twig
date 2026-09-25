@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Mediarama{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('build/app.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="uk-navbar-container">
+        <div class="uk-container">
+            <nav uk-navbar>
+                <div class="uk-navbar-left">
+                    <a class="uk-navbar-item uk-logo" href="{{ path('home') }}">Mediarama</a>
+                </div>
+                <div class="uk-navbar-right">
+                    <ul class="uk-navbar-nav uk-visible@m">
+                        <li><a href="#">Collections</a></li>
+                        <li><a href="#">Explore</a></li>
+                    </ul>
+                    <button class="uk-navbar-toggle uk-hidden@m" type="button" uk-toggle="target: #mobile-navigation" aria-label="Open navigation">
+                        <span uk-navbar-toggle-icon></span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div id="mobile-navigation" uk-offcanvas="overlay: true; flip: true">
+        <div class="uk-offcanvas-bar">
+            <button class="uk-offcanvas-close" type="button" uk-close aria-label="Close navigation"></button>
+            <ul class="uk-nav uk-nav-default">
+                <li><a href="#">Collections</a></li>
+                <li><a href="#">Explore</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <main class="uk-section">
+        <div class="uk-container">
+            {% block body %}{% endblock %}
+        </div>
+    </main>
+
+    <script src="/build/uikit.min.js"></script>
+    <script src="/build/uikit-icons.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
