@@ -128,3 +128,110 @@ Before plugin architecture can be considered fully researched:
 - identify dynamically constructed hook names not caught by source search;
 - compare 1.6 vs 1.7 plugin-manager behavior;
 - classify which Coppermine plugin capabilities deserve first-class Mediarama extension APIs.
+
+
+## Plugin lifecycle and ordering semantics
+
+The first source-level lifecycle pass confirms several important behaviors.
+
+### Persistent registry
+
+The core `plugins` table stores:
+
+- plugin ID
+- name
+- enabled flag
+- path
+- integer priority
+
+Installed plugins are loaded ordered by `priority`.
+
+The plugin manager can move plugins up/down, making hook execution order an administrator-controlled property.
+
+### Enable/disable
+
+Plugins can remain installed while disabled.
+
+Disabled plugins are skipped for normal filter/action dispatch, but uninstall code can still be loaded so cleanup can run.
+
+The entire plugin system can also be disabled globally through configuration.
+
+### Wakeup
+
+Plugin loading has a wakeup phase. A plugin that does not successfully wake is skipped by ordinary actions/filters.
+
+This means Coppermine's plugin model has an explicit runtime activation concept beyond merely "file exists".
+
+### Filters
+
+Filters are sequential transformations.
+
+For each enabled/awake plugin that registered the named filter:
+
+1. the current value is passed to the plugin callback;
+2. the callback return value becomes the value passed to the next plugin;
+3. final transformed value is returned to core.
+
+Therefore plugin priority can materially change behavior.
+
+### Actions
+
+Actions use the same ordered plugin traversal model but represent lifecycle/side-effect extension points.
+
+The API also supports scoped execution for a specific/new plugin, used during lifecycle operations.
+
+### Install/uninstall
+
+Installation:
+
+- chooses a priority after existing plugins;
+- loads plugin code/config metadata;
+- invokes `plugin_install`;
+- can return an integer to indicate additional configuration is required;
+- persists registry information only after successful install.
+
+Uninstall:
+
+- invokes `plugin_uninstall`;
+- can return a numeric state indicating cleanup is still required;
+- removes registry row on success;
+- compacts priorities.
+
+### Plugin manager capabilities
+
+The admin plugin manager supports:
+
+- global plugin-system enable/disable;
+- discovery of plugin directories;
+- version compatibility metadata;
+- install;
+- uninstall;
+- enable/disable;
+- priority reordering;
+- plugin-specific configuration/admin UI;
+- plugin package upload/delete.
+
+## Mediarama extension-design consequence
+
+Mediarama should preserve:
+
+- deterministic extension ordering where ordering is meaningful;
+- explicit enable/disable state;
+- install/upgrade/uninstall lifecycle;
+- extension-specific configuration;
+- typed transformation pipelines;
+- lifecycle failure handling.
+
+It should **not** expose arbitrary global PHP state or unrestricted raw-page rewriting as the default extension contract.
+
+A future extension system should also define:
+
+- transaction boundaries;
+- asynchronous vs synchronous handlers;
+- timeout/failure isolation;
+- versioned API contracts;
+- capability permissions/sandbox expectations;
+- extension-owned schema migration/uninstall policy;
+- how plugin-owned data participates in backup/migration.
+
+The last point is directly relevant to Coppermine migration: unknown installed plugins can own data outside the 22 core tables.
