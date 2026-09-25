@@ -9,3 +9,18 @@ services:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
+
+
+    Mediarama\Media\Infrastructure\Metadata\ExifToolProcess:
+        arguments:
+            $binary: '%env(default:exiftool:EXIFTOOL_BINARY)%'
+
+    Mediarama\Media\Infrastructure\Metadata\LocalExifToolInspector:
+        arguments:
+            $mediaRoot: '%env(resolve:MEDIA_STORAGE_PATH)%'
+
+    Mediarama\Media\Application\MediaMetadataInspector:
+        alias: Mediarama\Media\Infrastructure\Metadata\LocalExifToolInspector
+
+    Mediarama\Export\Application\MetadataWriter:
+        alias: Mediarama\Export\Infrastructure\ExifToolMetadataWriter
