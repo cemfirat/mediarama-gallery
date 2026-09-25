@@ -1,4 +1,4 @@
-# Mediarama
+# Mediarama Gallery
 
 Official domain: **https://mediarama.gallery**
 
