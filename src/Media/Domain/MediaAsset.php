@@ -41,7 +41,8 @@ final class MediaAsset
     }
 
     /** @param array<string, mixed> $metadata */
-    public static function create(
+    public static function createWithId(
+        Uuid $id,
         ?Uuid $ownerId,
         StorageObjectId $original,
         string $originalFilename,
@@ -54,7 +55,7 @@ final class MediaAsset
         $now = new DateTimeImmutable();
 
         return new self(
-            Uuid::v7(),
+            $id,
             $ownerId,
             $original,
             $originalFilename,
@@ -67,6 +68,30 @@ final class MediaAsset
             $now,
             $now,
             metadata: $metadata,
+        );
+    }
+
+    /** @param array<string, mixed> $metadata */
+    public static function create(
+        ?Uuid $ownerId,
+        StorageObjectId $original,
+        string $originalFilename,
+        string $mimeType,
+        MediaType $mediaType,
+        int $byteSize,
+        string $checksumSha256,
+        array $metadata = [],
+    ): self {
+        return self::createWithId(
+            Uuid::v7(),
+            $ownerId,
+            $original,
+            $originalFilename,
+            $mimeType,
+            $mediaType,
+            $byteSize,
+            $checksumSha256,
+            $metadata,
         );
     }
 
