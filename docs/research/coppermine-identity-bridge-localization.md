@@ -151,3 +151,127 @@ Still required:
 - bridge group mapping;
 - registration/profile restrictions while bridged;
 - how plugin hooks can override authorization (`authorize_user`).
+
+
+## Registration lifecycle
+
+Coppermine's local-account registration has a substantial configuration surface.
+
+Confirmed options include:
+
+- allow/disable self-registration;
+- optional global registration password;
+- registration disclaimer/terms display;
+- CAPTCHA;
+- email verification requirement;
+- administrator activation requirement;
+- administrator email notification;
+- creation of a personal user album on registration.
+
+When email verification or administrator activation is required, a newly registered account is created inactive until the corresponding activation flow completes.
+
+### Mediarama implication
+
+The importer should preserve **account state**, not Coppermine's activation tokens or historical credential mechanics.
+
+For a new Mediarama installation:
+
+- migrated active local users should use the explicit password-reset/invitation flow already planned;
+- inactive/unverified users should not be accidentally activated;
+- old activation keys should not become Mediarama credentials;
+- registration policy should be product configuration, not blindly copied as raw Coppermine config.
+
+## Login identity options
+
+Coppermine can configure login by:
+
+- username;
+- email address;
+- either username or email.
+
+This is separate from bridged identity behavior.
+
+Mediarama should decide its own sign-in identifier policy, but migration must detect duplicate/missing email and username edge cases before assuming email-first authentication.
+
+Coppermine can also allow duplicate email addresses, which is especially relevant if Mediarama later requires email uniqueness.
+
+## User profile model
+
+The core user table has six configurable profile fields:
+
+- `user_profile1`
+- `user_profile2`
+- `user_profile3`
+- `user_profile4`
+- `user_profile5`
+- `user_profile6`
+
+Administrators can configure their display labels. Defaults include familiar profile concepts such as location/interests, but installations can repurpose the fields.
+
+### Migration implication
+
+The importer must not hard-code semantic names solely from default labels.
+
+Preflight should capture:
+
+- configured label for each profile field;
+- whether the field is in actual use;
+- data type/length realities;
+- privacy implications.
+
+Likely Mediarama mapping:
+
+- known/recognized concepts → explicit profile field;
+- installation-specific fields → structured legacy profile metadata or custom-field mechanism;
+- empty unused fields → omit.
+
+## Guest and anonymous behavior
+
+Coppermine has a formal guest/anonymous group and a global `allow_unlogged_access` setting.
+
+Guest behavior intersects with:
+
+- gallery visibility;
+- comments;
+- uploads;
+- ratings;
+- e-cards/reporting;
+- CAPTCHA;
+- registration promotion.
+
+Therefore "public gallery" and "anonymous capabilities" are separate concerns.
+
+Mediarama should keep those concepts separate as well:
+
+- public read access;
+- guest interaction permissions;
+- authenticated-user permissions.
+
+## User self-service configuration
+
+Confirmed gallery-level user settings include:
+
+- member-list visibility to logged-in users;
+- whether users may change their email;
+- whether users may delete their own account;
+- whether duplicate email addresses are allowed;
+- whether users retain edit/delete control over files uploaded to public galleries.
+
+These are product-policy decisions, not data that should be copied mechanically.
+
+## Identity migration preflight requirements
+
+Before importing users, preflight should report:
+
+- whether the source is bridged;
+- local vs externally authoritative identity assumptions;
+- login method (username/email/both);
+- duplicate-email count;
+- accounts with empty/unusable email;
+- active vs inactive users;
+- configured custom profile field labels and usage;
+- active bans;
+- personal user galleries/albums;
+- guest/public-access policy.
+
+This preflight is required before the user importer can be considered production-safe.
