@@ -44,16 +44,25 @@ final readonly class CoppermineAclImporter
             $passwordProtected = trim((string) $row['alb_password']) !== '';
             if ($passwordProtected) {
                 // Coppermine stores album passwords as MD5. Never reuse that hash.
-                $this->target->update('collections', [
-                    'visibility' => 'restricted',
-                    'password_protected' => true,
-                    'password_hash' => null,
-                    'password_hint' => trim((string) $row['alb_password_hint']) !== ''
-                        ? (string) $row['alb_password_hint']
-                        : null,
-                    'password_reset_required' => true,
-                    'updated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
-                ], ['id' => $collectionId->toRfc4122()]);
+                $this->target->executeStatement(
+                    <<<'SQL'
+UPDATE collections
+SET visibility = 'restricted',
+    password_protected = TRUE,
+    password_hash = NULL,
+    password_hint = :hint,
+    password_reset_required = TRUE,
+    updated_at = :updated_at
+WHERE id = :id
+SQL,
+                    [
+                        'id' => $collectionId->toRfc4122(),
+                        'hint' => trim((string) $row['alb_password_hint']) !== ''
+                            ? (string) $row['alb_password_hint']
+                            : null,
+                        'updated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
+                    ],
+                );
                 $passwordReset[] = $aid;
             }
 
