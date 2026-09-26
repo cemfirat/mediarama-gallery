@@ -122,6 +122,63 @@ jobs:
           mkdir -p /tmp/coppermine-albums/userpics
           convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample.jpg
           convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample2.jpg
+
+          exiftool -overwrite_original \
+            '-IFD0:Make=Fixture Camera Co' \
+            '-IFD0:Model=FixtureCam 1' \
+            '-ExifIFD:DateTimeOriginal=2024:01:02 10:30:00' \
+            '-ExifIFD:LensModel=Fixture 35mm' \
+            '-ExifIFD:ISO=400' \
+            '-ExifIFD:FNumber=2.8' \
+            '-ExifIFD:ExposureTime=0.008' \
+            '-ExifIFD:FocalLength=35' \
+            '-GPS:GPSLatitude=48.2082' \
+            '-GPS:GPSLatitudeRef=N' \
+            '-GPS:GPSLongitude=16.3738' \
+            '-GPS:GPSLongitudeRef=E' \
+            '-XMP-dc:Title=Embedded fixture title' \
+            '-XMP-dc:Description=Embedded fixture description' \
+            '-XMP-dc:Creator=Fixture Photographer' \
+            '-XMP-dc:Rights=Fixture Copyright' \
+            '-XMP-dc:Subject=portrait' \
+            '-XMP-dc:Subject+=vienna' \
+            '-XMP-iptcCore:Location=Vienna Fixture' \
+            /tmp/coppermine-albums/userpics/sample.jpg
+
+          exiftool -overwrite_original \
+            '-IPTC:DateCreated=2024:03:05' \
+            '-IPTC:ObjectName=IPTC embedded title' \
+            '-IPTC:Caption-Abstract=IPTC embedded description' \
+            '-IPTC:By-line=IPTC Creator' \
+            '-IPTC:CopyrightNotice=IPTC Copyright' \
+            '-IPTC:Sub-location=IPTC Vienna' \
+            '-IPTC:Keywords=archive' \
+            '-IPTC:Keywords+=vienna' \
+            /tmp/coppermine-albums/userpics/sample2.jpg
+
+          exiftool -json -struct -G1:4 -a -n -- /tmp/coppermine-albums/userpics/sample.jpg > /tmp/coppermine-rich-metadata.json
+          php <<'PHP'
+          <?php
+          $decoded = json_decode((string) file_get_contents('/tmp/coppermine-rich-metadata.json'), true, flags: JSON_THROW_ON_ERROR);
+          $raw = $decoded[0] ?? [];
+          foreach ([
+              'IFD0:Make',
+              'IFD0:Model',
+              'ExifIFD:DateTimeOriginal',
+              'ExifIFD:ISO',
+              'ExifIFD:LensModel',
+              'XMP-dc:Title',
+              'XMP-dc:Creator',
+              'XMP-dc:Subject',
+              'XMP-iptcCore:Location',
+          ] as $key) {
+              if (!array_key_exists($key, $raw)) {
+                  fwrite(STDERR, 'Missing expected ExifTool family-1 key: '.$key.PHP_EOL);
+                  exit(1);
+              }
+          }
+          PHP
+
           cp tests/Fixtures/Coppermine/media/sample.mp3 /tmp/coppermine-albums/userpics/sample.mp3
           cp tests/Fixtures/Coppermine/media/sample.mp4 /tmp/coppermine-albums/userpics/sample.mp4
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
@@ -150,6 +207,13 @@ jobs:
               'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 4,
               'ready audio media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,
               'ready video media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp4' AND mime_type = 'video/mp4' AND media_type = 'video' AND processing_state = 'ready'") === 1,
+              'Coppermine title and description beat embedded values' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND title = 'Fixture Photo' AND description = 'Imported fixture caption' AND metadata_provenance->>'title' = 'coppermine_import' AND metadata_provenance->>'description' = 'coppermine_import'") === 1,
+              'embedded EXIF and XMP seed canonical metadata' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND creator = 'Fixture Photographer' AND copyright = 'Fixture Copyright' AND camera_make = 'Fixture Camera Co' AND camera_model = 'FixtureCam 1' AND lens = 'Fixture 35mm' AND iso = 400 AND location_name = 'Vienna Fixture' AND ABS(latitude - 48.2082) < 0.000001 AND ABS(longitude - 16.3738) < 0.000001 AND captured_at IS NOT NULL") === 1,
+              'embedded metadata provenance' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND metadata_provenance->>'creator' = 'embedded' AND metadata_provenance->>'camera_make' = 'embedded' AND metadata_provenance->>'captured_at' = 'embedded' AND metadata_provenance->>'latitude' = 'embedded'") === 1,
+              'qualified EXIF and XMP snapshot keys' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND metadata->'exif' ? 'IFD0:Make' AND metadata->'exif' ? 'ExifIFD:ISO' AND metadata->'xmp' ? 'XMP-dc:Title' AND metadata->'xmp' ? 'XMP-dc:Subject'") === 1,
+              'embedded XMP keyword list preserved' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND jsonb_array_length(metadata->'xmp'->'XMP-dc:Subject') = 2") === 1,
+              'IPTC fallback seeds canonical metadata' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample2.jpg' AND title = 'Aggregate Only Photo' AND description = 'Rating aggregate without detailed vote rows' AND creator = 'IPTC Creator' AND copyright = 'IPTC Copyright' AND location_name = 'IPTC Vienna' AND captured_at::date = DATE '2024-03-05'") === 1,
+              'qualified IPTC snapshot keys' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample2.jpg' AND metadata->'iptc' ? 'IPTC:ObjectName' AND metadata->'iptc' ? 'IPTC:Keywords' AND jsonb_array_length(metadata->'iptc'->'IPTC:Keywords') = 2") === 1,
               'nested category hierarchy' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections child JOIN collections parent ON parent.id = child.parent_id WHERE child.title = 'Nested Category' AND parent.title = 'Fixture Category'") === 1,
               'nested album hierarchy' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections album JOIN collections parent ON parent.id = album.parent_id WHERE album.title = 'Nested Album' AND parent.title = 'Nested Category'") === 1,
               'user gallery root ownership' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN users u ON u.id = c.owner_id WHERE c.title = 'User Gallery Album' AND c.parent_id IS NULL AND u.username = 'fixture-user'") === 1,
