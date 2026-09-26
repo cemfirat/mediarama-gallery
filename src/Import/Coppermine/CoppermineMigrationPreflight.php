@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace Mediarama\Import\Coppermine;
 
 use Doctrine\DBAL\Connection;
+use Mediarama\Upload\Application\UploadContentPolicy;
 
 final readonly class CoppermineMigrationPreflight
 {
     private const DETAIL_LIMIT = 20;
+    private const MIME_PREFIX_BYTES = 262144;
 
     public function __construct(
         private CoppermineConnectionFactory $sourceFactory,
         private CoppermineTablePrefix $prefix,
+        private CoppermineFileLocator $files,
+        private UploadContentPolicy $contentPolicy,
     ) {
     }
 
@@ -23,6 +27,7 @@ final readonly class CoppermineMigrationPreflight
             $this->duplicateEmailBlockers($source),
             $this->bridgeBlockers($source),
             $this->moderatorGroupBlockers($source),
+            $this->sourceMediaBlockers($source),
         );
 
         return new CoppermineMigrationPreflightReport($blockers);
@@ -136,5 +141,64 @@ SQL,
         }
 
         return $blockers;
+    }
+
+    /** @return list<string> */
+    private function sourceMediaBlockers(Connection $source): array
+    {
+        $table = $source->quoteIdentifier($this->prefix->table('pictures'));
+        $rows = $source->iterateAssociative(
+            'SELECT pid, filepath, filename FROM '.$table.' ORDER BY pid ASC',
+        );
+        $blockers = [];
+
+        foreach ($rows as $row) {
+            if (count($blockers) >= self::DETAIL_LIMIT) {
+                break;
+            }
+
+            $sourceId = (string) $row['pid'];
+
+            try {
+                $path = $this->files->locate((string) $row['filepath'], (string) $row['filename']);
+            } catch (\Throwable $e) {
+                $blockers[] = sprintf('Picture %s source path is unsafe: %s', $sourceId, $e->getMessage());
+                continue;
+            }
+
+            if (!is_file($path) || !is_readable($path)) {
+                $blockers[] = sprintf('Picture %s original file is missing or unreadable.', $sourceId);
+                continue;
+            }
+
+            try {
+                $this->contentPolicy->assertMimeAllowed($this->detectMimeType($path));
+            } catch (\Throwable $e) {
+                $blockers[] = sprintf('Picture %s source media is not importable: %s', $sourceId, $e->getMessage());
+            }
+        }
+
+        return $blockers;
+    }
+
+    private function detectMimeType(string $path): string
+    {
+        $stream = fopen($path, 'rb');
+        if ($stream === false) {
+            throw new \RuntimeException('Unable to open source media for MIME inspection.');
+        }
+
+        try {
+            $prefix = fread($stream, self::MIME_PREFIX_BYTES);
+            if ($prefix === false) {
+                throw new \RuntimeException('Unable to read source media for MIME inspection.');
+            }
+        } finally {
+            fclose($stream);
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($prefix);
+
+        return is_string($mime) && $mime !== '' ? $mime : 'application/octet-stream';
     }
 }
