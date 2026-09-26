@@ -122,6 +122,8 @@ jobs:
           mkdir -p /tmp/coppermine-albums/userpics
           convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample.jpg
           convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample2.jpg
+          cp tests/Fixtures/Coppermine/media/sample.mp3 /tmp/coppermine-albums/userpics/sample.mp3
+          cp tests/Fixtures/Coppermine/media/sample.mp4 /tmp/coppermine-albums/userpics/sample.mp4
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             < tests/Fixtures/Coppermine/1.6-minimal.sql
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root \
@@ -131,7 +133,7 @@ jobs:
         run: php bin/console mediarama:import:coppermine
 
       - name: Process imported media asynchronously
-        run: php bin/console messenger:consume async --limit=2 --time-limit=30 --no-interaction -vv
+        run: php bin/console messenger:consume async --limit=4 --time-limit=30 --no-interaction -vv
 
       - name: Verify migrated fixture
         run: |
@@ -145,7 +147,9 @@ jobs:
           ]);
           $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
           $checks = [
-              'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 2,
+              'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 4,
+              'ready audio media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,
+              'ready video media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp4' AND mime_type = 'video/mp4' AND media_type = 'video' AND processing_state = 'ready'") === 1,
               'nested category hierarchy' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections child JOIN collections parent ON parent.id = child.parent_id WHERE child.title = 'Nested Category' AND parent.title = 'Fixture Category'") === 1,
               'nested album hierarchy' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections album JOIN collections parent ON parent.id = album.parent_id WHERE album.title = 'Nested Album' AND parent.title = 'Nested Category'") === 1,
               'user gallery root ownership' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN users u ON u.id = c.owner_id WHERE c.title = 'User Gallery Album' AND c.parent_id IS NULL AND u.username = 'fixture-user'") === 1,

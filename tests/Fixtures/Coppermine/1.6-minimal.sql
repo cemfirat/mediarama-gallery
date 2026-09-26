@@ -221,6 +221,16 @@ INSERT INTO cpg_pictures (
   101, 11, 'userpics/', 'sample2.jpg', 0, 0, 2, 2, 0,
   '2024-01-03 12:00:00', 1704283200, 1, 6000, 2,
   'Aggregate Only Photo', 'Rating aggregate without detailed vote rows', '', 'YES', 2
+),
+(
+  102, 11, 'userpics/', 'sample.mp3', 0, 0, 0, 0, 0,
+  '2024-01-04 12:00:00', 1704369600, 1, 0, 0,
+  'Fixture Audio', 'Non-image audio fixture', '', 'YES', 3
+),
+(
+  103, 11, 'userpics/', 'sample.mp4', 0, 0, 16, 16, 0,
+  '2024-01-05 12:00:00', 1704456000, 1, 0, 0,
+  'Fixture Video', 'Non-image video fixture', '', 'YES', 4
 );
 
 INSERT INTO cpg_categorymap (cid, group_id)
