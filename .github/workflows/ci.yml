@@ -100,8 +100,14 @@ jobs:
           <?php
           require 'vendor/autoload.php';
 
+          use Mediarama\Media\Application\ImageDerivativeProfile;
+          use Mediarama\Media\Domain\MediaAsset;
+          use Mediarama\Media\Domain\MediaType;
+          use Mediarama\Media\Domain\StorageObjectId;
+          use Mediarama\Media\Infrastructure\Image\ImageMagickDerivativeGenerator;
           use Mediarama\Media\Infrastructure\Image\ImageMagickProcess;
           use Mediarama\Media\Infrastructure\Image\ImageMagickResourceLimits;
+          use Mediarama\Media\Infrastructure\Storage\LocalMediaStorage;
           use Symfony\Component\Process\Process;
 
           $limits = new ImageMagickResourceLimits(
@@ -168,6 +174,58 @@ jobs:
 
               if (!$convertBlocked) {
                   throw new RuntimeException('Oversized image was not blocked by conversion limits.');
+              }
+
+              $storageRoot = sys_get_temp_dir().'/mediarama-resource-storage-'.$suffix;
+              $storage = new LocalMediaStorage($storageRoot);
+              $originalId = new StorageObjectId('media', 'originals/oversized.png');
+              $source = fopen($oversized, 'rb');
+              if ($source === false) {
+                  throw new RuntimeException('Unable to open oversized fixture.');
+              }
+
+              try {
+                  $stored = $storage->write($originalId, $source, 'image/png');
+              } finally {
+                  fclose($source);
+              }
+
+              if ($stored->checksum === null) {
+                  throw new RuntimeException('Oversized fixture checksum was not created.');
+              }
+
+              $asset = MediaAsset::create(
+                  null,
+                  $originalId,
+                  'oversized.png',
+                  'image/png',
+                  MediaType::Image,
+                  $stored->byteSize,
+                  $stored->checksum,
+              );
+              $profile = new ImageDerivativeProfile('resource-test', 32, 32, 'webp', 82, false);
+              $generator = new ImageMagickDerivativeGenerator($storage, $runner);
+
+              $generationBlocked = false;
+              try {
+                  $generator->generate($asset, $profile, 1);
+              } catch (RuntimeException) {
+                  $generationBlocked = true;
+              }
+
+              if (!$generationBlocked) {
+                  throw new RuntimeException('Oversized image unexpectedly produced a derivative.');
+              }
+
+              $derivativeId = new StorageObjectId(
+                  'media',
+                  sprintf(
+                      'derivatives/%s/v1/resource-test.webp',
+                      $asset->id->toRfc4122(),
+                  ),
+              );
+              if ($storage->exists($derivativeId)) {
+                  throw new RuntimeException('Failed conversion persisted a partial derivative.');
               }
           } finally {
               @unlink($normal);

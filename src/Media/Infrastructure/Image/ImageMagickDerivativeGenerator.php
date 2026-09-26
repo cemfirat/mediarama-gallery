@@ -32,9 +32,14 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
         $output = tempnam(sys_get_temp_dir(), 'mediarama-image-out-');
 
         if ($input === false || $output === false) {
-            if (is_resource($source)) {
-                fclose($source);
+            if (is_string($input)) {
+                @unlink($input);
             }
+            if (is_string($output)) {
+                @unlink($output);
+            }
+            fclose($source);
+
             throw new \RuntimeException('Unable to allocate image processing files.');
         }
 
