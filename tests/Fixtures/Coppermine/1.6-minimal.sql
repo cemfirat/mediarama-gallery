@@ -13,6 +13,26 @@ CREATE TABLE cpg_usergroups (
   access_level TINYINT NOT NULL DEFAULT 3
 );
 
+CREATE TABLE cpg_banned (
+  ban_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT DEFAULT NULL,
+  user_name VARCHAR(255) NOT NULL DEFAULT '',
+  email VARCHAR(255) NOT NULL DEFAULT '',
+  ip_addr TINYTEXT,
+  expiry DATETIME DEFAULT NULL,
+  brute_force TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE cpg_plugins (
+  plugin_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(64) NOT NULL DEFAULT '',
+  enabled TINYINT NOT NULL DEFAULT 1,
+  path VARCHAR(128) NOT NULL DEFAULT '',
+  priority INT UNSIGNED NOT NULL DEFAULT 0,
+  UNIQUE KEY uniq_plugin_name (name),
+  UNIQUE KEY uniq_plugin_path (path)
+);
+
 CREATE TABLE cpg_users (
   user_id INT NOT NULL PRIMARY KEY,
   user_group INT NOT NULL DEFAULT 2,

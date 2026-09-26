@@ -21,7 +21,7 @@ Each source concept must end in one of these states:
 | Coppermine source | Meaning | Current Mediarama status | Classification | Remaining work |
 | --- | --- | --- | --- | --- |
 | `albums` | album metadata, ownership, visibility, password settings | importer exists | Transform | finish edge cases, real-gallery tests |
-| `banned` | user/name/email/IP bans, expiry, brute-force flag | not migrated | Blocking gap | decide Mediarama ban/security model and privacy handling |
+| `banned` | user/name/email/IP bans, expiry, brute-force flag | non-empty table is rejected by preflight | Unsupported / block | do not silently drop security state; migrate only after a Mediarama ban model is deliberately designed |
 | `bridge` | external-application bridge configuration | not migrated | Blocking gap | determine identity-authority migration strategy |
 | `categories` | hierarchy, ownership, structural grouping | importer exists | Transform | nested/user-gallery real tests |
 | `categorymap` | groups allowed to create albums in categories | currently not migrated | Blocking gap | map to collection/category creation capability/policy |
@@ -35,7 +35,7 @@ Each source concept must end in one of these states:
 | `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | not migrated | unresolved, likely Historical or Intentional omission | decide aggregate preservation vs privacy-safe discard |
 | `languages` | installed/available/enabled language definitions | not migrated | likely Transform / configuration | map only installation language preferences, not runtime implementation |
 | `pictures` | media records, metadata, ownership, approval, counters | importer exists | Transform | non-image/custom type and metadata-heavy real tests |
-| `plugins` | installed plugin registry, enablement and priority | not migrated | Intentional omission as registry | separately audit plugin-owned business data before migration |
+| `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
 | `sessions` | active login sessions | not migrated | Intentional omission | document security rationale; never migrate sessions |
 | `temp_messages` | transient cross-page messages | not migrated | Intentional omission | document as ephemeral |
 | `usergroups` | global capabilities, quotas and approval flags | partially migrated | Transform | quota + approval semantics still incomplete |
@@ -220,3 +220,20 @@ Required preflight:
 - duplicate-email policy decision before insert.
 
 Migration must not silently rewrite user emails without a reportable rule.
+
+
+## Explicit preflight policy for security and extensions
+
+### Ban table
+
+Coppermine's `banned` table is active security state, not harmless history. It can represent user, name, email or IP bans with expiry plus brute-force lockout records.
+
+Mediarama currently has no equivalent ban/expiry model. A non-empty source table therefore blocks migration before identity writes. Preflight reports only counts by manual/brute-force type and does not echo source email/IP values into logs.
+
+This is an **unsupported-and-block** classification, not an intentional discard.
+
+### Installed plugins
+
+The core `plugins` table records plugin name/path/enabled state/priority, but Coppermine plugins can maintain separate tables, files and configuration. Persisted data can remain after a plugin is disabled.
+
+The registry itself is not imported into Mediarama runtime state. Any installed plugin row instead blocks core migration until that plugin has been audited or explicitly waived.

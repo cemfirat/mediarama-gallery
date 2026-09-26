@@ -28,6 +28,8 @@ final readonly class CoppermineMigrationPreflight
         $blockers = array_merge(
             $this->duplicateEmailBlockers($source),
             $this->bridgeBlockers($source),
+            $this->banBlockers($source),
+            $this->pluginBlockers($source),
             $this->privateAlbumConfigurationBlockers($source),
             $this->moderatorGroupBlockers($source),
             $this->categoryHierarchyBlockers($source),
@@ -114,6 +116,60 @@ SQL,
         )];
     }
 
+
+    /** @return list<string> */
+    private function banBlockers(Connection $source): array
+    {
+        $tableName = $this->prefix->table('banned');
+        if (!in_array($tableName, $source->createSchemaManager()->listTableNames(), true)) {
+            return [];
+        }
+
+        $table = $source->quoteIdentifier($tableName);
+        $total = (int) $source->fetchOne('SELECT COUNT(*) FROM '.$table);
+        if ($total === 0) {
+            return [];
+        }
+
+        $manual = (int) $source->fetchOne('SELECT COUNT(*) FROM '.$table.' WHERE brute_force = 0');
+
+        return [sprintf(
+            'Coppermine contains %d ban record(s) (%d manual, %d brute-force); Mediarama does not yet migrate ban/expiry semantics, so identity migration is blocked until these records are explicitly resolved.',
+            $total,
+            $manual,
+            max(0, $total - $manual),
+        )];
+    }
+
+    /** @return list<string> */
+    private function pluginBlockers(Connection $source): array
+    {
+        $tableName = $this->prefix->table('plugins');
+        if (!in_array($tableName, $source->createSchemaManager()->listTableNames(), true)) {
+            return [];
+        }
+
+        $table = $source->quoteIdentifier($tableName);
+        $rows = $source->fetchAllAssociative(sprintf(
+            'SELECT plugin_id, name, path, enabled FROM %s ORDER BY plugin_id ASC LIMIT %d',
+            $table,
+            self::DETAIL_LIMIT,
+        ));
+
+        $blockers = [];
+        foreach ($rows as $row) {
+            $name = trim((string) $row['name']) !== '' ? (string) $row['name'] : 'unnamed plugin';
+            $path = trim((string) $row['path']) !== '' ? (string) $row['path'] : '(empty path)';
+            $blockers[] = sprintf(
+                'Coppermine plugin "%s" at "%s" is installed (%s); plugin-owned files/tables/configuration must be audited or explicitly waived before core migration.',
+                $name,
+                $path,
+                (int) $row['enabled'] === 1 ? 'enabled' : 'disabled',
+            );
+        }
+
+        return $blockers;
+    }
 
     /** @return list<string> */
     private function privateAlbumConfigurationBlockers(Connection $source): array

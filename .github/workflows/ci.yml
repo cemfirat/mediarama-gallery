@@ -276,6 +276,18 @@ jobs:
             -e "UPDATE cpg_config SET value = '0' WHERE name = 'bridge_enable';"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "INSERT INTO cpg_banned (user_id, user_name, expiry, brute_force) VALUES (1, 'fixture-user', NULL, 0);"
+          assert_inspect_blocked ban-records 'Coppermine contains 1 ban record(s) (1 manual, 0 brute-force); Mediarama does not yet migrate ban/expiry semantics, so identity migration is blocked until these records are explicitly resolved.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "DELETE FROM cpg_banned;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "INSERT INTO cpg_plugins (name, enabled, path, priority) VALUES ('Fixture Plugin', 0, 'fixture_plugin', 1);"
+          assert_inspect_blocked installed-plugin 'Coppermine plugin "Fixture Plugin" at "fixture_plugin" is installed (disabled); plugin-owned files/tables/configuration must be audited or explicitly waived before core migration.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "DELETE FROM cpg_plugins;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_config SET value = '0' WHERE name = 'allow_private_albums';"
           assert_inspect_blocked private-albums-disabled 'Album 10 retains private access metadata (visibility=3, password-protected) while allow_private_albums=0 made Coppermine treat private-album enforcement as disabled; an explicit target visibility decision is required.'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
