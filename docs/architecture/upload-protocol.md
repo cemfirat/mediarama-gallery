@@ -44,6 +44,23 @@ After the MIME/type allow policy and expected-size check pass, Mediarama validat
 FFprobe runs through an argv-only process with a parent timeout plus bounded probe size and analyze duration. With the current local-storage adapter the validator probes the already assembled temporary file in place; it does not duplicate a potentially multi-gigabyte upload merely to validate it. A structural validation failure leaves the upload session in `uploaded`, keeps the temporary object retryable, and prevents immutable-original promotion, `MediaAsset` creation and background dispatch.
 
 
+## Finalization idempotency and crash recovery
+
+For media created by the resumable upload pipeline, the MediaAsset UUID is the UploadSession UUID. The immutable original therefore has one deterministic target key for the lifetime of the session.
+
+Finalization uses two short PostgreSQL critical sections backed by `SELECT ... FOR UPDATE` on the upload-session row:
+
+1. after MIME/decoder/probe validation, claim `uploaded -> finalizing`;
+2. after filesystem promotion, persist the MediaAsset, finalization mapping, completed session state and processing enqueue exactly once.
+
+ImageMagick/FFprobe work and filesystem promotion remain outside the row lock.
+
+The `finalizing` state is recoverable. A retry uses the temporary object when it still exists, or the deterministic permanent object when a previous request already promoted it. Local promotion is idempotent and re-checks the target after a concurrent rename race.
+
+Before committing, the promoted object's size and SHA-256 must still match the validated content.
+
+The current deployment uses Symfony's Doctrine Messenger transport on the same PostgreSQL connection. CI must verify that queue insertion participates in the final database transaction; a future non-Doctrine transport requires an explicit outbox rather than assuming cross-system atomicity.
+
 ## Resume
 
 Clients query session status and only resend missing chunks.
@@ -76,8 +93,6 @@ These are deployment policy values, not hard-coded product limits.
 ## Remaining hardening
 
 - persistent quota reservations/accounting;
-- expired-session cleanup command/job;
 - production authentication;
-- resource-scoped collection ACL/sharing;
-- integration tests over HTTP + PostgreSQL + filesystem;
-- conflict/idempotency behavior for concurrent finalize requests.
+- richer resource-scoped collection sharing/access policy;
+- HTTP + PostgreSQL + filesystem integration coverage beyond finalization.
