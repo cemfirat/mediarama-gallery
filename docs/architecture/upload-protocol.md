@@ -93,8 +93,6 @@ These are deployment policy values, not hard-coded product limits.
 ## Remaining hardening
 
 - persistent quota reservations/accounting;
-- expired-session cleanup command/job;
 - production authentication;
-- resource-scoped collection ACL/sharing;
-- integration tests over HTTP + PostgreSQL + filesystem;
-- production authentication, persistent quotas and richer sharing remain separate hardening work.
+- richer resource-scoped collection sharing/access policy;
+- HTTP + PostgreSQL + filesystem integration coverage beyond finalization.

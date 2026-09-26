@@ -39,6 +39,26 @@ final readonly class FinalizeUpload
 
         $existing = $this->existingAsset($sessionId);
         if ($existing !== null) {
+            if ($session->status === UploadStatus::Finalizing) {
+                $this->criticalSection->run(
+                    $sessionId,
+                    function () use ($sessionId, $actingUserId): void {
+                        $locked = $this->sessions->get($sessionId);
+                        $this->assertOwner($locked, $actingUserId);
+
+                        if (
+                            $locked->status === UploadStatus::Finalizing
+                            && $this->existingAsset($sessionId) !== null
+                        ) {
+                            // Repair the pre-hardening crash window where the
+                            // mapping existed but the session was not completed.
+                            $locked->complete();
+                            $this->sessions->save($locked);
+                        }
+                    },
+                );
+            }
+
             return $existing;
         }
 
