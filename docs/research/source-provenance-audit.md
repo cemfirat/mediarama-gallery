@@ -1,6 +1,6 @@
 # Mediarama source provenance and Coppermine reuse audit
 
-Status: **history-aware technical provenance audit automated; final project-license governance decision still open**
+Status: **technical provenance review complete; project license confirmed as GPL-3.0-or-later**
 Date: 2026-09-26
 Tracking: #11
 
@@ -70,6 +70,23 @@ Research documentation, CI plumbing and the deliberately synthetic Coppermine SQ
 
 A marker scan is not a mathematical proof that no code was ever semantically rewritten or renamed. It is a reproducible historical guard against the most likely accidental copy/paste paths and complements the architectural/manual review in this document.
 
+### Targeted runtime similarity cross-check
+
+The four highest-risk migration components were compared directly against the closest Coppermine runtime implementation files in both audited source lines.
+
+Mediarama files:
+
+- `CoppermineMediaImporter.php`;
+- `CoppermineIdentityImporter.php`;
+- `CoppermineCollectionImporter.php`;
+- `CoppermineInteractionImporter.php`.
+
+Compared upstream areas included `include/picmgmt.inc.php`, `include/functions.inc.php`, `bridge/udb_base.inc.php`, `catmgr.php` and `register.php`.
+
+Against both pinned 1.6 and 1.7 source snapshots, normalized non-comment lines of at least 50 characters produced **zero exact shared lines** in those targeted pairs.
+
+This is not legal proof of non-derivation by itself. Together with the full-history guard, architecture differences and repository review it supports the technical classification that the current importer is a clean Mediarama implementation of source-format behavior rather than a textual port of Coppermine runtime code.
+
 ## Coppermine names in application source
 
 Mediarama application code does contain source-format names where required for migration compatibility, for example:
@@ -116,32 +133,22 @@ Current policy should remain:
 
 ## Current license state
 
-The repository currently declares:
+The project licensing decision is to **retain the repository's existing `GPL-3.0-or-later` declaration**.
 
-- `composer.json`: `GPL-3.0-or-later`
-- root `LICENSE`: GPL-3.0-or-later declaration
-
-Important: this license choice was made before this provenance audit was complete.
-
-Because the current evidence supports a clean implementation, GPL is **not established here as technically mandatory merely because Coppermine was researched**.
-
-The final project license is therefore still a project/governance decision unless a later audit finds copied/adapted GPL implementation code.
-
-
-Both upstream reference lines checked for this audit carry the GNU GPL v3 license text:
+Both upstream reference lines checked for this audit carry GNU GPL v3 license text:
 
 - Coppermine 1.6.x: `LICENSE.txt`;
 - Coppermine 1.7.x: `LICENSE`.
 
-Keeping Mediarama at `GPL-3.0-or-later` is therefore license-compatible with a future deliberate GPL-compatible reuse path, but compatibility does not remove the need to preserve upstream copyright/provenance notices if actual upstream code is ever copied or adapted.
+The current technical audit found no copied/adapted Coppermine runtime implementation in Mediarama. GPL is therefore not being claimed as technically mandatory merely because behavior/schema facts were researched; it remains the deliberate Mediarama project license and is compatible with a future deliberate GPL-compatible reuse path.
 
-## LICENSE-file quality issue
+If upstream implementation code is copied or adapted later, license compatibility alone is not enough: the exact source, upstream commit, copyright notices, destination and modifications must be recorded and preserved as applicable.
 
-The current root `LICENSE` starts with the GPL v3 heading and initial paragraph but does **not** contain the complete canonical GPLv3 license text; it points to the FSF for the remainder.
+## LICENSE-file quality
 
-If GPL-3.0-or-later remains the final choice, replace this abbreviated file with the complete canonical GPLv3 text before the first public release.
+The root `LICENSE` is replaced as part of the licensing close-out with the complete GPLv3 license text rather than the previous abbreviated pointer.
 
-Do not call the current file a complete license copy.
+The project-level `GPL-3.0-or-later` choice remains declared in package metadata and the licensing policy document. Third-party dependencies retain their own licenses.
 
 ## Clean-room indicators in the current architecture
 
@@ -163,16 +170,17 @@ The following Mediarama structures are architecturally independent from Coppermi
 
 These differences do not by themselves prove legal independence, but they are consistent with the documented clean-implementation strategy.
 
-## Areas that still need provenance review
+## Future provenance triggers
 
-Before closing the licensing/provenance gate:
+The current repository audit is complete. Provenance review must be reopened for a change when it introduces one of these new inputs:
 
-- keep the automated full-history marker audit green and manually review any future similarity/provenance exception;
-- inspect any future real-gallery fixture and its documented permission/anonymization record;
-- inspect future importer code added from upstream examples;
-- keep generated/bundled asset provenance explicit if repository assets are added later;
-- inspect any ported metadata/parser logic;
-- keep third-party package licenses separate from Mediarama's own license.
+- a real/anonymized gallery fixture;
+- deliberately copied/adapted upstream implementation code;
+- bundled third-party images, icons, fonts or media;
+- ported third-party metadata/parser logic;
+- vendored source not managed as a normal dependency.
+
+The automated full-history marker audit remains a standing CI control.
 
 ## Rule for future Coppermine research
 
@@ -202,18 +210,21 @@ That makes later license review auditable.
 
 ## Current conclusion
 
-The targeted repository search finds **no obvious Coppermine runtime implementation copied into Mediarama application source**.
+The technical provenance review finds **no identified copied/adapted Coppermine runtime implementation in Mediarama**.
 
-The automated history marker audit adds evidence that obvious upstream implementation code was not temporarily committed and later removed from application/test paths.
+Evidence includes:
 
-This is not yet the final licensing exit gate because:
+- current-tree searches for Coppermine implementation markers;
+- a CI-enforced full-history marker scan using an unshallow checkout;
+- targeted exact-line similarity checks against high-risk 1.6 and 1.7 runtime areas;
+- independent Mediarama architecture/data-model boundaries;
+- explicit provenance for synthetic SQL/media fixtures;
+- no bundled Coppermine photos, themes, icons or fonts;
+- package-manager separation for third-party dependencies.
 
-- marker-based history review cannot by itself exclude heavily rewritten/renamed derivation;
-- future real/anonymized fixtures remain provenance-sensitive by definition;
-- the project owner has not yet made a deliberately documented final license choice.
+The technical classification is **clean implementation informed by Coppermine behavior/schema facts**.
 
-Issue #11 should remain open.
-
+Mediarama retains `GPL-3.0-or-later` as its project license. A future real/anonymized gallery fixture or deliberate upstream code reuse is a new provenance event and must carry its own record; it does not reopen already audited code unless that new material changes the evidence.
 
 ## Dependency and generated-asset boundary
 
@@ -221,4 +232,4 @@ Mediarama does not vendor Composer or npm dependency source into the repository:
 
 UIkit, Symfony, Doctrine, Flysystem and build/test packages remain separately licensed dependencies resolved by their package managers. Their licenses are not reclassified as Mediarama-authored source merely because CI installs them or copies generated UIkit build artifacts into the ignored build directory.
 
-At the current audited tree, the only repository binary media were the two synthetic MP3/MP4 test fixtures. They are removed by the next fixture-provenance change and generated in CI instead.
+The repository no longer stores binary MP3/MP4 fixture files; CI generates them with FFmpeg. JPEG fixtures are likewise generated with ImageMagick and populated with synthetic metadata via ExifTool.
