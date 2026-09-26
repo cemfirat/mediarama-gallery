@@ -36,6 +36,7 @@ final readonly class CoppermineMigrationPreflight
             $this->categoryHierarchyBlockers($source),
             $this->coverReferenceBlockers($source),
             $this->unmodeledSourceDataBlockers($source),
+            $this->legacyCounterBlockers($source),
             $this->sourceMediaBlockers($source),
         );
 
@@ -612,6 +613,48 @@ SQL,
             if (count($blockers) >= self::DETAIL_LIMIT) {
                 return array_slice($blockers, 0, self::DETAIL_LIMIT);
             }
+        }
+
+        return $blockers;
+    }
+
+    /** @return list<string> */
+    private function legacyCounterBlockers(Connection $source): array
+    {
+        $pictures = $source->quoteIdentifier($this->prefix->table('pictures'));
+        $albums = $source->quoteIdentifier($this->prefix->table('albums'));
+        $blockers = [];
+
+        $pictureRows = $source->fetchAllAssociative(sprintf(
+            'SELECT pid, hits FROM %s WHERE hits < 0 ORDER BY pid ASC LIMIT %d',
+            $pictures,
+            self::DETAIL_LIMIT,
+        ));
+
+        foreach ($pictureRows as $row) {
+            $blockers[] = sprintf(
+                'Picture %s has invalid negative hits=%d; historical view_count cannot be migrated safely.',
+                (string) $row['pid'],
+                (int) $row['hits'],
+            );
+        }
+
+        if (count($blockers) >= self::DETAIL_LIMIT) {
+            return array_slice($blockers, 0, self::DETAIL_LIMIT);
+        }
+
+        $albumRows = $source->fetchAllAssociative(sprintf(
+            'SELECT aid, alb_hits FROM %s WHERE alb_hits < 0 ORDER BY aid ASC LIMIT %d',
+            $albums,
+            self::DETAIL_LIMIT - count($blockers),
+        ));
+
+        foreach ($albumRows as $row) {
+            $blockers[] = sprintf(
+                'Album %s has invalid negative alb_hits=%d; historical view_count cannot be migrated safely.',
+                (string) $row['aid'],
+                (int) $row['alb_hits'],
+            );
         }
 
         return $blockers;

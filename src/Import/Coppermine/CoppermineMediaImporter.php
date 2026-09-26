@@ -39,7 +39,7 @@ final readonly class CoppermineMediaImporter
 
         $rows = $source->fetchAllAssociative(
             sprintf(
-                'SELECT pid, aid, filepath, filename, filesize, pwidth, pheight, ctime, owner_id, title, caption, keywords, approved, position FROM %s WHERE pid > :cursor ORDER BY pid ASC LIMIT %d',
+                'SELECT pid, aid, filepath, filename, filesize, pwidth, pheight, hits, ctime, owner_id, title, caption, keywords, approved, position FROM %s WHERE pid > :cursor ORDER BY pid ASC LIMIT %d',
                 $table,
                 max(1, min($batchSize, 500)),
             ),
@@ -66,6 +66,12 @@ final readonly class CoppermineMediaImporter
                     if ($state === false) {
                         throw new \RuntimeException('Existing picture mapping points to a missing MediaAsset.');
                     }
+
+                    $this->target->update(
+                        'media_assets',
+                        ['view_count' => (int) $row['hits']],
+                        ['id' => $existing->toRfc4122()],
+                    );
 
                     if ((string) $state !== 'ready') {
                         $this->bus->dispatch(new ProcessMedia($existing->toRfc4122()));
@@ -118,11 +124,11 @@ final readonly class CoppermineMediaImporter
                         <<<'SQL'
 INSERT INTO media_assets (
     id, owner_id, storage_disk, storage_key, original_filename, mime_type, media_type,
-    byte_size, checksum_sha256, width, height, title, description,
+    byte_size, checksum_sha256, width, height, title, description, view_count,
     processing_state, moderation_state, metadata, metadata_provenance, created_at, updated_at
 ) VALUES (
     :id, :owner_id, 'media', :storage_key, :filename, :mime_type, :media_type,
-    :byte_size, :checksum, :width, :height, :title, :description,
+    :byte_size, :checksum, :width, :height, :title, :description, :view_count,
     'uploaded', :moderation_state, '{}'::jsonb, :metadata_provenance::jsonb, :created_at, NOW()
 )
 SQL,
@@ -139,6 +145,7 @@ SQL,
                             'height' => (int) $row['pheight'] > 0 ? (int) $row['pheight'] : null,
                             'title' => trim((string) $row['title']) !== '' ? (string) $row['title'] : null,
                             'description' => trim((string) $row['caption']) !== '' ? (string) $row['caption'] : null,
+                            'view_count' => (int) $row['hits'],
                             'moderation_state' => (string) $row['approved'] === 'YES' ? 'published' : 'pending_review',
                             'metadata_provenance' => json_encode(array_filter([
                                 'title' => trim((string) $row['title']) !== '' ? 'coppermine_import' : null,

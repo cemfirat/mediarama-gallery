@@ -207,6 +207,9 @@ jobs:
               'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 4,
               'ready audio media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,
               'ready video media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp4' AND mime_type = 'video/mp4' AND media_type = 'video' AND processing_state = 'ready'") === 1,
+              'media historical view count' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND view_count = 42") === 1,
+              'second media historical view count' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample2.jpg' AND view_count = 9") === 1,
+              'album historical view count' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND view_count = 17") === 1,
               'explicit album cover' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN media_assets m ON m.id = c.cover_media_id WHERE c.title = 'Fixture Album' AND m.original_filename = 'sample.jpg'") === 1,
               'explicit category cover' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN media_assets m ON m.id = c.cover_media_id WHERE c.title = 'Fixture Category' AND m.original_filename = 'sample2.jpg'") === 1,
               'dynamic album cover remains unpinned' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Linked Album' AND cover_media_id IS NULL") === 1,
@@ -385,6 +388,18 @@ jobs:
           assert_inspect_blocked missing-category-cover 'Category 2 explicit thumbnail references missing picture 9999.'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_categories SET thumb = 101 WHERE cid = 2;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET hits = -1 WHERE pid = 100;"
+          assert_inspect_blocked negative-picture-hits 'Picture 100 has invalid negative hits=-1; historical view_count cannot be migrated safely.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET hits = 42 WHERE pid = 100;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_albums SET alb_hits = -1 WHERE aid = 10;"
+          assert_inspect_blocked negative-album-hits 'Album 10 has invalid negative alb_hits=-1; historical view_count cannot be migrated safely.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_albums SET alb_hits = 17 WHERE aid = 10;"
 
           mv /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine-albums/userpics/sample.jpg.missing
           assert_inspect_blocked missing-original 'Picture 100 original file is missing or unreadable.'

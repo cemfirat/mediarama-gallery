@@ -197,10 +197,10 @@ INSERT INTO cpg_categories (
 
 INSERT INTO cpg_albums (
   aid, title, description, visibility, uploads, comments, votes, pos, category,
-  owner, thumb, alb_password, alb_password_hint
+  owner, thumb, alb_hits, alb_password, alb_password_hint
 ) VALUES (
   10, 'Fixture Album', 'Album imported by CI', 3, 'YES', 'YES', 'YES', 1, 2,
-  1, 100, '5ebe2294ecd0e0f08eab7690d2a6ee69', 'fixture hint'
+  1, 100, 17, '5ebe2294ecd0e0f08eab7690d2a6ee69', 'fixture hint'
 );
 
 INSERT INTO cpg_albums (
@@ -234,12 +234,12 @@ INSERT INTO cpg_pictures (
   position
 ) VALUES
 (
-  100, 10, 'userpics/', 'sample.jpg', 0, 0, 2, 2, 0,
+  100, 10, 'userpics/', 'sample.jpg', 0, 0, 2, 2, 42,
   '2024-01-01 12:00:00', 1704110400, 1, 8000, 1,
   'Fixture Photo', 'Imported fixture caption', 'summer;vacation', 'YES', 1
 ),
 (
-  101, 11, 'userpics/', 'sample2.jpg', 0, 0, 2, 2, 0,
+  101, 11, 'userpics/', 'sample2.jpg', 0, 0, 2, 2, 9,
   '2024-01-03 12:00:00', 1704283200, 1, 6000, 2,
   'Aggregate Only Photo', 'Rating aggregate without detailed vote rows', '', 'YES', 2
 ),

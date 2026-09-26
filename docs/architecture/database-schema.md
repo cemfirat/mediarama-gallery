@@ -119,6 +119,7 @@ Permissions use stable string keys such as `media.upload`.
 - `captured_at timestamptz nullable`
 - `processing_state varchar`
 - `moderation_state varchar`
+- `view_count bigint not null default 0`
 - `metadata jsonb not null default '{}'`
 - `created_at timestamptz`
 - `updated_at timestamptz`
@@ -129,6 +130,7 @@ Constraints:
 - byte_size >= 0
 - width/height > 0 when present
 - duration >= 0 when present
+- view_count >= 0
 - unique `(storage_disk, storage_key)`
 
 Do not put a collection/album ID on this table.
@@ -165,10 +167,13 @@ Unique logical derivative:
 - `visibility varchar`
 - `cover_media_id uuid fk media_assets nullable`
 - `position integer default 0`
+- `view_count bigint not null default 0`
 - timestamps
 - `deleted_at nullable`
 
 A collection is not a storage directory.
+
+`view_count` is a product/read-model counter, not embedded metadata. Imported Coppermine `pictures.hits` and `albums.alb_hits` seed these counters, while detailed historical hit telemetry remains outside the core domain.
 
 ## collection_media
 

@@ -20,7 +20,7 @@ Each source concept must end in one of these states:
 
 | Coppermine source | Meaning | Current Mediarama status | Classification | Remaining work |
 | --- | --- | --- | --- | --- |
-| `albums` | album metadata, ownership, visibility, password settings, explicit cover | importer preserves structure/ACL/password intent and positive explicit cover PIDs | Transform | per-album upload/comment/vote flags and historical counters still need final classification; real-gallery tests remain |
+| `albums` | album metadata, ownership, visibility, password settings, explicit cover, aggregate views | importer preserves structure/ACL/password intent, positive explicit cover PIDs and `alb_hits` as collection `view_count` | Transform | per-album upload/comment/vote flags still need final classification; real-gallery tests remain |
 | `banned` | user/name/email/IP bans, expiry, brute-force flag | non-empty table is rejected by preflight | Unsupported / block | do not silently drop security state; migrate only after a Mediarama ban model is deliberately designed |
 | `bridge` | external-application bridge configuration | enabled bridging is rejected by preflight | Unsupported / block | local Coppermine users are not treated as authoritative while bridging is enabled |
 | `categories` | hierarchy, ownership, structural grouping, explicit cover | importer preserves hierarchy/ownership and positive explicit cover PIDs | Transform | real-gallery tests remain |
@@ -32,9 +32,9 @@ Each source concept must end in one of these states:
 | `exif` | persisted EXIF blob per picture | source file metadata currently re-extracted instead | Transform | compare stored EXIF vs source-file metadata; preserve source-only fields if necessary |
 | `favpics` | authenticated-user favorites serialized in source | decoded for mapped users/pictures and imported to normalized favorites | Transform | anonymous browser-local favorites remain an intentional limitation |
 | `filetypes` | extension→MIME→content type→player registry | not migrated | Transform | distinguish built-in defaults from site customizations; map relevant custom media policies |
-| `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | not migrated | unresolved, likely Historical or Intentional omission | decide aggregate preservation vs privacy-safe discard |
+| `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | raw rows are intentionally not migrated; aggregate `pictures.hits` / `albums.alb_hits` are preserved separately as `view_count` | Intentional omission of raw telemetry + Direct aggregate preservation | retain product counters without copying privacy-heavy network/client history |
 | `languages` | installed/available/enabled language definitions | not migrated | likely Transform / configuration | map only installation language preferences, not runtime implementation |
-| `pictures` | media records, metadata, ownership, approval, counters, custom fields, user-gallery icon, source-root selector | core media import exists; non-empty `user1..4`, non-zero `galleryicon` and non-zero `url_prefix` now block preflight | Transform + explicit blockers | design target custom-field/user-gallery representation models; multi-root source addressing requires an explicit source resolver; aggregate counters remain unresolved |
+| `pictures` | media records, metadata, ownership, approval, counters, custom fields, user-gallery icon, source-root selector | core media import preserves aggregate `hits` as media `view_count`; non-empty `user1..4`, non-zero `galleryicon` and non-zero `url_prefix` block preflight | Transform + explicit blockers | design target custom-field/user-gallery representation models; multi-root source addressing requires an explicit source resolver |
 | `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
 | `sessions` | active login sessions | not migrated | Intentional omission | document security rationale; never migrate sessions |
 | `temp_messages` | transient cross-page messages | not migrated | Intentional omission | document as ephemeral |
@@ -140,6 +140,19 @@ Preflight therefore blocks:
 This is intentionally not a raw per-group blocker: a supplemental group that makes a user's effective Coppermine policy unlimited/no-approval/full-access is respected exactly as Coppermine would calculate it.
 
 `can_send_ecards` is classified differently. Mediarama does not carry forward the e-card product feature, so its group capability is an **intentional product omission** rather than a migration blocker. Historical e-card records remain a separate privacy/data-retention decision.
+
+## Historical view counters vs detailed telemetry
+
+Coppermine maintains two different layers of view data:
+
+- `pictures.hits` and `albums.alb_hits` are user-visible aggregate counters;
+- `hit_stats` can contain per-hit timestamp, IP, referrer, search phrase, browser, OS and user ID.
+
+Mediarama preserves the aggregate counters as non-negative `view_count` fields on media and collections. This retains product-visible popularity/history without requiring the privacy-heavy raw event log.
+
+Negative legacy counter values are treated as corrupt source state and block preflight before target writes.
+
+The detailed `hit_stats` rows are an **intentional omission** from the core migration. Analytics/audit retention can be designed separately if there is a concrete legal or product requirement; it is not copied merely for Coppermine parity.
 
 ## Privacy-sensitive historical tables
 

@@ -90,7 +90,7 @@ SQL,
 
         $rows = $source->fetchAllAssociative(
             sprintf(
-                'SELECT aid, title, description, visibility, pos, category, owner FROM %s WHERE aid > :cursor ORDER BY aid ASC LIMIT %d',
+                'SELECT aid, title, description, visibility, pos, category, owner, alb_hits FROM %s WHERE aid > :cursor ORDER BY aid ASC LIMIT %d',
                 $table,
                 max(1, min($batchSize, 1000)),
             ),
@@ -126,10 +126,10 @@ SQL,
             $this->target->executeStatement(
                 <<<'SQL'
 INSERT INTO collections (
-    id, owner_id, parent_id, slug, title, description, visibility, position,
+    id, owner_id, parent_id, slug, title, description, visibility, position, view_count,
     created_at, updated_at
 ) VALUES (
-    :id, :owner_id, :parent_id, NULL, :title, :description, :visibility, :position,
+    :id, :owner_id, :parent_id, NULL, :title, :description, :visibility, :position, :view_count,
     NOW(), NOW()
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -139,6 +139,7 @@ ON CONFLICT (id) DO UPDATE SET
     description = EXCLUDED.description,
     visibility = EXCLUDED.visibility,
     position = EXCLUDED.position,
+    view_count = EXCLUDED.view_count,
     updated_at = NOW()
 SQL,
                 [
@@ -149,6 +150,7 @@ SQL,
                     'description' => (string) $row['description'],
                     'visibility' => $visibility,
                     'position' => (int) $row['pos'],
+                    'view_count' => (int) $row['alb_hits'],
                 ],
             );
 
