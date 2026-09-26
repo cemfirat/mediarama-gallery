@@ -158,14 +158,21 @@ INSERT INTO cpg_usergroups (
 INSERT INTO cpg_users (
   user_id, user_group, user_active, user_name, user_lastvisit, user_regdate,
   user_email, user_email_valid, user_profile6, user_language
-) VALUES (
+) VALUES
+(
   1, 3, 'YES', 'fixture-user', '2024-02-01 10:00:00', '2024-01-01 10:00:00',
   'fixture@example.test', 'YES', '', 'en'
+),
+(
+  2, 3, 'YES', 'viewer-user', '2024-02-02 10:00:00', '2024-01-02 10:00:00',
+  'viewer@example.test', 'YES', '', 'en'
 );
 
 INSERT INTO cpg_categories (
   cid, owner_id, name, description, pos, parent, lft, rgt, depth
-) VALUES (2, 0, 'Fixture Category', 'Category imported by CI', 1, 0, 1, 2, 0);
+) VALUES
+  (2, 0, 'Fixture Category', 'Category imported by CI', 1, 0, 1, 4, 0),
+  (3, 0, 'Nested Category', 'Nested category imported by CI', 2, 2, 2, 3, 1);
 
 INSERT INTO cpg_albums (
   aid, title, description, visibility, uploads, comments, votes, pos, category,
@@ -183,14 +190,37 @@ INSERT INTO cpg_albums (
   1, 'summer'
 );
 
+INSERT INTO cpg_albums (
+  aid, title, description, visibility, uploads, comments, votes, pos, category,
+  owner, keyword
+) VALUES
+(
+  12, 'Nested Album', 'Album inside a nested category', 0, 'NO', 'YES', 'YES', 3, 3,
+  1, NULL
+),
+(
+  13, 'User Gallery Album', 'Album in the virtual user gallery namespace', 0, 'NO', 'YES', 'YES', 4, 10001,
+  1, NULL
+),
+(
+  14, 'User Restricted Album', 'Album restricted to a specific user', 10002, 'NO', 'YES', 'YES', 5, 0,
+  1, NULL
+);
+
 INSERT INTO cpg_pictures (
   pid, aid, filepath, filename, filesize, total_filesize, pwidth, pheight, hits,
   mtime, ctime, owner_id, pic_rating, votes, title, caption, keywords, approved,
   position
-) VALUES (
+) VALUES
+(
   100, 10, 'userpics/', 'sample.jpg', 0, 0, 2, 2, 0,
   '2024-01-01 12:00:00', 1704110400, 1, 8000, 1,
   'Fixture Photo', 'Imported fixture caption', 'summer;vacation', 'YES', 1
+),
+(
+  101, 11, 'userpics/', 'sample2.jpg', 0, 0, 2, 2, 0,
+  '2024-01-03 12:00:00', 1704283200, 1, 6000, 2,
+  'Aggregate Only Photo', 'Rating aggregate without detailed vote rows', '', 'YES', 2
 );
 
 INSERT INTO cpg_categorymap (cid, group_id)
@@ -198,8 +228,12 @@ VALUES (2, 3);
 
 INSERT INTO cpg_comments (
   pid, msg_id, msg_author, msg_body, msg_date, author_id, approval, spam
-) VALUES (
+) VALUES
+(
   100, 200, 'fixture-user', 'Fixture comment', '2024-01-02 12:00:00', 1, 'YES', 'NO'
+),
+(
+  100, 201, 'Guest Alice', 'Guest fixture comment', '2024-01-03 12:00:00', 0, 'NO', 'NO'
 );
 
 INSERT INTO cpg_votes (pic_id, user_md5_id, vote_time)

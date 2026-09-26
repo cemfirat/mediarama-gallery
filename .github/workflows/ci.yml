@@ -121,6 +121,7 @@ jobs:
         run: |
           mkdir -p /tmp/coppermine-albums/userpics
           convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample.jpg
+          convert -size 2x2 xc:white /tmp/coppermine-albums/userpics/sample2.jpg
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             < tests/Fixtures/Coppermine/1.6-minimal.sql
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root \
@@ -130,7 +131,7 @@ jobs:
         run: php bin/console mediarama:import:coppermine
 
       - name: Process imported media asynchronously
-        run: php bin/console messenger:consume async --limit=1 --time-limit=30 --no-interaction -vv
+        run: php bin/console messenger:consume async --limit=2 --time-limit=30 --no-interaction -vv
 
       - name: Verify migrated fixture
         run: |
@@ -144,14 +145,22 @@ jobs:
           ]);
           $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
           $checks = [
-              'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 1,
+              'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 2,
+              'nested category hierarchy' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections child JOIN collections parent ON parent.id = child.parent_id WHERE child.title = 'Nested Category' AND parent.title = 'Fixture Category'") === 1,
+              'nested album hierarchy' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections album JOIN collections parent ON parent.id = album.parent_id WHERE album.title = 'Nested Album' AND parent.title = 'Nested Category'") === 1,
+              'user gallery root ownership' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN users u ON u.id = c.owner_id WHERE c.title = 'User Gallery Album' AND c.parent_id IS NULL AND u.username = 'fixture-user'") === 1,
               'restricted password-reset collection' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND visibility = 'restricted' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
               'category creation ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Category' AND g.name = 'Registered' AND ca.capability = 'collection.create_child' AND ca.effect = 'allow'") === 1,
+              'group restricted ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Album' AND g.name = 'Registered' AND ca.capability = 'collection.view' AND ca.effect = 'allow'") === 1,
+              'user restricted ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN users u ON u.id = ca.user_id WHERE c.title = 'User Restricted Album' AND u.username = 'viewer-user' AND ca.capability = 'collection.view' AND ca.effect = 'allow'") === 1,
               'tags' => (int) $db->fetchOne('SELECT COUNT(*) FROM tags') === 2,
               'album-keyword membership' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_media cm JOIN collections c ON c.id = cm.collection_id JOIN media_assets m ON m.id = cm.media_id WHERE c.title = 'Linked Album' AND m.original_filename = 'sample.jpg'") === 1,
               'comment' => (int) $db->fetchOne("SELECT COUNT(*) FROM comments WHERE body = 'Fixture comment'") === 1,
+              'guest comment' => (int) $db->fetchOne("SELECT COUNT(*) FROM comments WHERE body = 'Guest fixture comment' AND user_id IS NULL AND guest_name = 'Guest Alice' AND moderation_state = 'pending_review'") === 1,
               'favorite' => (int) $db->fetchOne('SELECT COUNT(*) FROM favorites') === 1,
               'rating' => (int) $db->fetchOne('SELECT COUNT(*) FROM ratings WHERE value = 4') === 1,
+              'aggregate-only rating' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_rating_aggregates a JOIN media_assets m ON m.id = a.media_id WHERE m.original_filename = 'sample2.jpg' AND a.average_5 = 3 AND a.vote_count = 2") === 1,
+              'no synthesized individual rating' => (int) $db->fetchOne("SELECT COUNT(*) FROM ratings r JOIN media_assets m ON m.id = r.media_id WHERE m.original_filename = 'sample2.jpg'") === 0,
               'reset-required user' => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = 'fixture-user' AND status = 'password_reset_required'") === 1,
               'empty async queue' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,
           ];
@@ -187,10 +196,10 @@ jobs:
           }
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
-            -e "INSERT INTO cpg_users (user_id, user_group, user_active, user_name, user_lastvisit, user_regdate, user_email, user_profile6) VALUES (2, 3, 'YES', 'duplicate-user', '2024-02-02 10:00:00', '2024-01-02 10:00:00', 'fixture@example.test', '');"
+            -e "INSERT INTO cpg_users (user_id, user_group, user_active, user_name, user_lastvisit, user_regdate, user_email, user_profile6) VALUES (99, 3, 'YES', 'duplicate-user', '2024-02-03 10:00:00', '2024-01-03 10:00:00', 'fixture@example.test', '');"
           assert_inspect_blocked duplicate-email 'Duplicate normalized email address "fixture@example.test" is used by 2 source users'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
-            -e "DELETE FROM cpg_users WHERE user_id = 2;"
+            -e "DELETE FROM cpg_users WHERE user_id = 99;"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_config SET value = '1' WHERE name = 'bridge_enable';"
