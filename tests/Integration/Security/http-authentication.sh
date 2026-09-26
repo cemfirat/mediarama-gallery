@@ -127,7 +127,24 @@ login_status() {
 }
 
 ANON_STATUS="$(upload_status)"
-expect_status 401 "$ANON_STATUS" "anonymous upload is rejected"
+expect_status 401 "$ANON_STATUS" "anonymous upload create is rejected"
+
+PROTECTED_ID="44444444-4444-4444-8444-444444444444"
+anonymous_endpoint_status() {
+    local method="$1"
+    local path="$2"
+
+    curl --silent --show-error \
+        --request "$method" \
+        --output /tmp/auth-protected-body.json \
+        --write-out '%{http_code}' \
+        "$BASE_URL$path"
+}
+
+expect_status 401 "$(anonymous_endpoint_status GET "/api/uploads/$PROTECTED_ID")" "anonymous upload status is rejected"
+expect_status 401 "$(anonymous_endpoint_status PUT "/api/uploads/$PROTECTED_ID/chunks/0")" "anonymous upload chunk is rejected"
+expect_status 401 "$(anonymous_endpoint_status POST "/api/uploads/$PROTECTED_ID/complete")" "anonymous upload complete is rejected"
+expect_status 401 "$(anonymous_endpoint_status POST "/api/uploads/$PROTECTED_ID/finalize")" "anonymous upload finalize is rejected"
 
 FORGED_STATUS="$(upload_status "" "X-Mediarama-User: $ACTIVE_ID")"
 expect_status 401 "$FORGED_STATUS" "forged development actor header is ignored in prod"
