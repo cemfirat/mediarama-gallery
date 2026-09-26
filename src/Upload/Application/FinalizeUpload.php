@@ -7,6 +7,7 @@ namespace Mediarama\Upload\Application;
 use Mediarama\Media\Application\MediaAssetRepository;
 use Mediarama\Media\Application\MediaStorage;
 use Mediarama\Media\Application\ProcessMedia;
+use Mediarama\Media\Application\ValidateStoredMediaStructure;
 use Mediarama\Media\Domain\MediaAsset;
 use Mediarama\Media\Domain\StorageObjectId;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -20,6 +21,7 @@ final readonly class FinalizeUpload
         private MediaStorage $storage,
         private ContentInspector $inspector,
         private UploadContentPolicy $contentPolicy,
+        private ValidateStoredMediaStructure $structureValidator,
         private UploadDestinationAuthorizer $authorizer,
         private UploadFinalizationRepository $finalizations,
         private MessageBusInterface $bus,
@@ -58,6 +60,8 @@ final readonly class FinalizeUpload
         if ($content->byteSize !== $session->expectedSize) {
             throw new \DomainException('Received upload size does not match expected size.');
         }
+
+        ($this->structureValidator)($temporary, $content->mediaType);
 
         $session->beginFinalization();
         $this->sessions->save($session);
