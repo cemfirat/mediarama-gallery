@@ -20,17 +20,17 @@ Each source concept must end in one of these states:
 
 | Coppermine source | Meaning | Current Mediarama status | Classification | Remaining work |
 | --- | --- | --- | --- | --- |
-| `albums` | album metadata, ownership, visibility, password settings | importer exists | Transform | finish edge cases, real-gallery tests |
+| `albums` | album metadata, ownership, visibility, password settings, explicit cover | importer preserves structure/ACL/password intent and positive explicit cover PIDs | Transform | per-album upload/comment/vote flags and historical counters still need final classification; real-gallery tests remain |
 | `banned` | user/name/email/IP bans, expiry, brute-force flag | non-empty table is rejected by preflight | Unsupported / block | do not silently drop security state; migrate only after a Mediarama ban model is deliberately designed |
-| `bridge` | external-application bridge configuration | not migrated | Blocking gap | determine identity-authority migration strategy |
-| `categories` | hierarchy, ownership, structural grouping | importer exists | Transform | nested/user-gallery real tests |
-| `categorymap` | groups allowed to create albums in categories | currently not migrated | Blocking gap | map to collection/category creation capability/policy |
+| `bridge` | external-application bridge configuration | enabled bridging is rejected by preflight | Unsupported / block | local Coppermine users are not treated as authoritative while bridging is enabled |
+| `categories` | hierarchy, ownership, structural grouping, explicit cover | importer preserves hierarchy/ownership and positive explicit cover PIDs | Transform | real-gallery tests remain |
+| `categorymap` | groups allowed to create albums in categories | imported to category collection `collection.create_child` ACL entries | Transform | real-gallery permission validation remains |
 | `comments` | comments, author, moderation/spam | importer exists | Transform | real guest/moderation tests; historical IP deliberately excluded |
 | `config` | large installation-wide behavior/config surface | only selected values read | Transform | build explicit allowlist of migratable behavior; never bulk-copy |
 | `dict` | keyword dictionary | not migrated | likely Intentional omission / rebuild | confirm dictionary is derived and can be regenerated from tags |
 | `ecards` | sent e-card history including sender/recipient emails and sender IP | not migrated | unresolved, likely Intentional omission | privacy/legal/product decision; do not import by default without reason |
 | `exif` | persisted EXIF blob per picture | source file metadata currently re-extracted instead | Transform | compare stored EXIF vs source-file metadata; preserve source-only fields if necessary |
-| `favpics` | authenticated-user favorites serialized in source | not migrated | Blocking gap | decode safely, resolve picture/user IDs, import to normalized favorites |
+| `favpics` | authenticated-user favorites serialized in source | decoded for mapped users/pictures and imported to normalized favorites | Transform | anonymous browser-local favorites remain an intentional limitation |
 | `filetypes` | extension→MIME→content type→player registry | not migrated | Transform | distinguish built-in defaults from site customizations; map relevant custom media policies |
 | `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | not migrated | unresolved, likely Historical or Intentional omission | decide aggregate preservation vs privacy-safe discard |
 | `languages` | installed/available/enabled language definitions | not migrated | likely Transform / configuration | map only installation language preferences, not runtime implementation |
@@ -57,9 +57,9 @@ Current classification: **intentional limitation unless a practical opt-in migra
 
 Coppermine can associate an album keyword with media whose picture keyword string matches that value, meaning some album-like membership can be dynamic rather than represented solely by `pictures.aid`.
 
-Current importer primarily maps native album ownership through `aid`.
+The importer now materializes those source semantics as additional normalized `collection_media` links after native `aid` membership is imported. CI verifies a picture can belong to its native album and an album-keyword-linked collection without moving or duplicating the MediaAsset.
 
-Classification: **Blocking gap until the exact album-keyword semantics and migration strategy are tested**.
+Classification: **Transform**.
 
 ### Plugin-owned data
 
@@ -146,6 +146,18 @@ For each one, the final migration policy must document:
 - retention necessity;
 - whether an aggregate is sufficient;
 - whether the field should be intentionally discarded.
+
+
+## Explicit collection-cover migration
+
+Coppermine stores user-selected album/category thumbnails as positive picture IDs. These are stable source choices and map directly to Mediarama's nullable `collections.cover_media_id`.
+
+Migration rules:
+
+- positive `albums.thumb` / `categories.thumb` values must resolve to a source picture during preflight;
+- after media import, the corresponding picture mapping becomes the target collection cover;
+- non-positive values remain unpinned because Coppermine uses them for automatic/dynamic behavior such as “last uploaded” or random album thumbnails;
+- Mediarama does not freeze a runtime-random source choice into permanent migrated data.
 
 ## Exit condition
 

@@ -189,25 +189,25 @@ INSERT INTO cpg_users (
 );
 
 INSERT INTO cpg_categories (
-  cid, owner_id, name, description, pos, parent, lft, rgt, depth
+  cid, owner_id, name, description, pos, parent, thumb, lft, rgt, depth
 ) VALUES
-  (2, 0, 'Fixture Category', 'Category imported by CI', 1, 0, 1, 4, 0),
-  (3, 0, 'Nested Category', 'Nested category imported by CI', 2, 2, 2, 3, 1);
+  (2, 0, 'Fixture Category', 'Category imported by CI', 1, 0, 101, 1, 4, 0),
+  (3, 0, 'Nested Category', 'Nested category imported by CI', 2, 2, 0, 2, 3, 1);
 
 INSERT INTO cpg_albums (
   aid, title, description, visibility, uploads, comments, votes, pos, category,
-  owner, alb_password, alb_password_hint
+  owner, thumb, alb_password, alb_password_hint
 ) VALUES (
   10, 'Fixture Album', 'Album imported by CI', 3, 'YES', 'YES', 'YES', 1, 2,
-  1, '5ebe2294ecd0e0f08eab7690d2a6ee69', 'fixture hint'
+  1, 100, '5ebe2294ecd0e0f08eab7690d2a6ee69', 'fixture hint'
 );
 
 INSERT INTO cpg_albums (
   aid, title, description, visibility, uploads, comments, votes, pos, category,
-  owner, keyword
+  owner, thumb, keyword
 ) VALUES (
   11, 'Linked Album', 'Membership comes from album keyword', 0, 'NO', 'YES', 'YES', 2, 2,
-  1, 'summer'
+  1, -1, 'summer'
 );
 
 INSERT INTO cpg_albums (

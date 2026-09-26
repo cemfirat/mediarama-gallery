@@ -33,6 +33,7 @@ final readonly class CoppermineMigrationPreflight
             $this->privateAlbumConfigurationBlockers($source),
             $this->moderatorGroupBlockers($source),
             $this->categoryHierarchyBlockers($source),
+            $this->coverReferenceBlockers($source),
             $this->sourceMediaBlockers($source),
         );
 
@@ -336,6 +337,46 @@ SQL,
                 }
 
                 $current = $parent;
+            }
+        }
+
+        return $blockers;
+    }
+
+    /** @return list<string> */
+    private function coverReferenceBlockers(Connection $source): array
+    {
+        $pictures = $source->quoteIdentifier($this->prefix->table('pictures'));
+        $blockers = [];
+
+        $sources = [
+            ['table' => 'categories', 'id' => 'cid', 'label' => 'Category'],
+            ['table' => 'albums', 'id' => 'aid', 'label' => 'Album'],
+        ];
+
+        foreach ($sources as $spec) {
+            $table = $source->quoteIdentifier($this->prefix->table($spec['table']));
+            $idColumn = $source->quoteIdentifier($spec['id']);
+            $rows = $source->fetchAllAssociative(sprintf(
+                'SELECT source.%s AS source_id, source.thumb FROM %s source LEFT JOIN %s picture ON picture.pid = source.thumb WHERE source.thumb > 0 AND picture.pid IS NULL ORDER BY source.%s ASC LIMIT %d',
+                $idColumn,
+                $table,
+                $pictures,
+                $idColumn,
+                self::DETAIL_LIMIT,
+            ));
+
+            foreach ($rows as $row) {
+                $blockers[] = sprintf(
+                    '%s %s explicit thumbnail references missing picture %s.',
+                    $spec['label'],
+                    (string) $row['source_id'],
+                    (string) $row['thumb'],
+                );
+
+                if (count($blockers) >= self::DETAIL_LIMIT) {
+                    return $blockers;
+                }
             }
         }
 

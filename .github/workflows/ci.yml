@@ -207,6 +207,9 @@ jobs:
               'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 4,
               'ready audio media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,
               'ready video media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp4' AND mime_type = 'video/mp4' AND media_type = 'video' AND processing_state = 'ready'") === 1,
+              'explicit album cover' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN media_assets m ON m.id = c.cover_media_id WHERE c.title = 'Fixture Album' AND m.original_filename = 'sample.jpg'") === 1,
+              'explicit category cover' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections c JOIN media_assets m ON m.id = c.cover_media_id WHERE c.title = 'Fixture Category' AND m.original_filename = 'sample2.jpg'") === 1,
+              'dynamic album cover remains unpinned' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Linked Album' AND cover_media_id IS NULL") === 1,
               'Coppermine title and description beat embedded values' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND title = 'Fixture Photo' AND description = 'Imported fixture caption' AND metadata_provenance->>'title' = 'coppermine_import' AND metadata_provenance->>'description' = 'coppermine_import'") === 1,
               'embedded EXIF and XMP seed canonical metadata' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND creator = 'Fixture Photographer' AND copyright = 'Fixture Copyright' AND camera_make = 'Fixture Camera Co' AND camera_model = 'FixtureCam 1' AND lens = 'Fixture 35mm' AND iso = 400 AND location_name = 'Vienna Fixture' AND ABS(latitude - 48.2082) < 0.000001 AND ABS(longitude - 16.3738) < 0.000001 AND captured_at IS NOT NULL") === 1,
               'embedded metadata provenance' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.jpg' AND metadata_provenance->>'creator' = 'embedded' AND metadata_provenance->>'camera_make' = 'embedded' AND metadata_provenance->>'captured_at' = 'embedded' AND metadata_provenance->>'latitude' = 'embedded'") === 1,
@@ -310,6 +313,18 @@ jobs:
           assert_inspect_blocked category-cycle 'Category hierarchy contains a cycle: 2 -> 3 -> 2.'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_categories SET parent = 0 WHERE cid = 2;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_albums SET thumb = 9999 WHERE aid = 10;"
+          assert_inspect_blocked missing-album-cover 'Album 10 explicit thumbnail references missing picture 9999.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_albums SET thumb = 100 WHERE aid = 10;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_categories SET thumb = 9999 WHERE cid = 2;"
+          assert_inspect_blocked missing-category-cover 'Category 2 explicit thumbnail references missing picture 9999.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_categories SET thumb = 101 WHERE cid = 2;"
 
           mv /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine-albums/userpics/sample.jpg.missing
           assert_inspect_blocked missing-original 'Picture 100 original file is missing or unreadable.'

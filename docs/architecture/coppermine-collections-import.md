@@ -11,8 +11,22 @@ Coppermine categories and albums are imported into the Mediarama collection tree
 - title/name → title
 - description → description
 - pos → position
+- positive album/category `thumb` PID → `cover_media_id`
 
 Owner references are resolved through the persistent Coppermine user mapping when available.
+
+## Covers
+
+Coppermine stores a stable user-selected thumbnail as a positive picture ID in both `albums.thumb` and `categories.thumb`.
+
+Those positive references are reconciled only after picture/media mappings exist and become `collections.cover_media_id`. Preflight rejects positive thumbnail IDs that do not resolve to a source picture, and cover reconciliation fails if the corresponding collection/media mapping is unexpectedly absent.
+
+Dynamic source behavior is not frozen into arbitrary media:
+
+- album `thumb < 0` means choose a random picture at display time;
+- `thumb = 0` is the source's automatic/default choice (for category management it is labelled “last uploaded”).
+
+These non-positive values leave `cover_media_id` null so Mediarama can use its own automatic cover behavior instead of turning a transient source choice into permanent data.
 
 ## Visibility
 

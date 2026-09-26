@@ -159,6 +159,73 @@ SQL,
         return count($rows);
     }
 
+    public function importExplicitCovers(): int
+    {
+        $source = $this->sourceFactory->create();
+        $updated = 0;
+
+        $sources = [
+            ['table' => 'categories', 'id' => 'cid', 'entity' => 'category', 'label' => 'category'],
+            ['table' => 'albums', 'id' => 'aid', 'entity' => 'album', 'label' => 'album'],
+        ];
+
+        foreach ($sources as $spec) {
+            $table = $source->quoteIdentifier($this->prefix->table($spec['table']));
+            $idColumn = $source->quoteIdentifier($spec['id']);
+            $rows = $source->fetchAllAssociative(sprintf(
+                'SELECT %s AS source_id, thumb FROM %s WHERE thumb > 0 ORDER BY %s ASC',
+                $idColumn,
+                $table,
+                $idColumn,
+            ));
+
+            foreach ($rows as $row) {
+                $sourceId = (string) $row['source_id'];
+                $pictureId = (string) $row['thumb'];
+
+                $collectionId = $this->mappings->findTargetId('coppermine', $spec['entity'], $sourceId);
+                if ($collectionId === null) {
+                    throw new \RuntimeException(sprintf(
+                        'Coppermine %s %s has not been imported before cover reconciliation.',
+                        $spec['label'],
+                        $sourceId,
+                    ));
+                }
+
+                $mediaId = $this->mappings->findTargetId('coppermine', 'picture', $pictureId);
+                if ($mediaId === null) {
+                    throw new \RuntimeException(sprintf(
+                        'Coppermine %s %s explicit thumbnail references picture %s which has not been imported.',
+                        $spec['label'],
+                        $sourceId,
+                        $pictureId,
+                    ));
+                }
+
+                $affected = $this->target->update(
+                    'collections',
+                    [
+                        'cover_media_id' => $mediaId->toRfc4122(),
+                        'updated_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
+                    ],
+                    ['id' => $collectionId->toRfc4122()],
+                );
+
+                if ($affected !== 1) {
+                    throw new \RuntimeException(sprintf(
+                        'Mapped Coppermine %s %s points to a missing target collection.',
+                        $spec['label'],
+                        $sourceId,
+                    ));
+                }
+
+                ++$updated;
+            }
+        }
+
+        return $updated;
+    }
+
     private function resolveCategoryParents(Connection $source): void
     {
         $table = $source->quoteIdentifier($this->prefix->table('categories'));

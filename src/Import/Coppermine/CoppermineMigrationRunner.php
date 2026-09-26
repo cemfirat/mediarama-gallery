@@ -92,6 +92,9 @@ SQL,
                 }
             } while (!$media->sourceExhausted);
 
+            $this->stage($runId, 'collections.covers');
+            $this->collections->importExplicitCovers();
+
             $this->stage($runId, 'keywords');
             $keywords = $this->keywords->import();
             if ($keywords->unmappedPictureIds !== [] || $keywords->unmappedAlbumIds !== []) {
