@@ -171,9 +171,10 @@ CREATE TABLE cpg_config (
 );
 
 INSERT INTO cpg_usergroups (
-  group_id, group_name, has_admin_access, can_rate_pictures,
-  can_post_comments, can_upload_pictures, can_create_albums
-) VALUES (3, 'Registered', 0, 1, 1, 1, 1);
+  group_id, group_name, group_quota, has_admin_access, can_rate_pictures,
+  can_post_comments, can_upload_pictures, can_create_albums,
+  pub_upl_need_approval, priv_upl_need_approval, access_level
+) VALUES (3, 'Registered', 0, 0, 1, 1, 1, 1, 0, 0, 3);
 
 INSERT INTO cpg_users (
   user_id, user_group, user_active, user_name, user_lastvisit, user_regdate,

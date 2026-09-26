@@ -38,7 +38,7 @@ Each source concept must end in one of these states:
 | `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
 | `sessions` | active login sessions | not migrated | Intentional omission | document security rationale; never migrate sessions |
 | `temp_messages` | transient cross-page messages | not migrated | Intentional omission | document as ephemeral |
-| `usergroups` | global capabilities, quotas and approval flags | partially migrated | Transform | quota + approval semantics still incomplete |
+| `usergroups` | global capabilities, quotas, upload approval, access tier, e-card capability | major capabilities migrate; effective finite quota/approval/access-tier semantics now block preflight until equivalent target policy exists | Transform + explicit blockers | implement persistent quota/accounting and deliberate moderation/derivative-access policy if parity is required; e-card capability is intentionally omitted with the feature |
 | `users` | local identities, profiles, activation/status | core identity import exists; non-empty `user_profile1..6` now blocks preflight | Transform + explicit blockers | design profile-field target mapping; activation tokens are intentionally not reusable; bridged identities remain unsupported |
 | `votes` | basic per-voter anti-repeat records without rating value | not reconstructed individually | Historical / omit detail | aggregate/detailed vote strategy already documented |
 | `vote_stats` | detailed ratings + IP/referrer/browser/OS/user | user-linked rating values partly migrated | Transform + privacy reduction | retain rating value/identity when recoverable; deliberately omit network/client telemetry |
@@ -114,17 +114,32 @@ The current Mediarama ACL importer covers **view access**, but not this category
 
 This gap must be resolved before permission migration is considered complete.
 
-## User-group semantics not yet fully migrated
+## User-group policy semantics
 
-The current importer maps major global capabilities, but Coppermine groups also include:
+The importer maps the major reusable global capabilities, but Coppermine also derives runtime policy across all of a user's group memberships.
 
-- `group_quota`;
-- public-upload approval requirement;
-- private-upload approval requirement;
-- access level;
-- e-card capability.
+Verified 1.6/1.7 behavior:
 
-These require explicit mapping/classification. In particular, quota and approval requirements affect ingestion/moderation behavior and cannot be silently discarded.
+- ordinary capabilities are combined permissively;
+- quota is unlimited if any membership has `group_quota=0`, otherwise the largest quota wins;
+- public/private approval flags use the least restrictive value;
+- `access_level` uses the highest level: `0` none, `1` thumbnail only, `2` intermediate, `3` full-size.
+
+Mediarama does not yet have equivalent migrated policy for finite quota, source-style public/private upload approval, or derivative/full-size access tiers. Its upload architecture already has an `UploadQuota` boundary, but current production wiring is intentionally unlimited.
+
+Migration policy: **evaluate effective policy per existing user and fail closed when current Mediarama behavior would be more permissive or would discard a restriction**.
+
+Preflight therefore blocks:
+
+- effective finite quota;
+- required public-upload approval when the user can upload/create albums;
+- required private/user-gallery upload approval when the user can upload/create albums;
+- effective access level below full-size;
+- missing referenced groups.
+
+This is intentionally not a raw per-group blocker: a supplemental group that makes a user's effective Coppermine policy unlimited/no-approval/full-access is respected exactly as Coppermine would calculate it.
+
+`can_send_ecards` is classified differently. Mediarama does not carry forward the e-card product feature, so its group capability is an **intentional product omission** rather than a migration blocker. Historical e-card records remain a separate privacy/data-retention decision.
 
 ## Privacy-sensitive historical tables
 

@@ -27,6 +27,7 @@ final readonly class CoppermineMigrationPreflight
         $source = $this->sourceFactory->create();
         $blockers = array_merge(
             $this->duplicateEmailBlockers($source),
+            $this->identityGroupPolicyBlockers($source),
             $this->bridgeBlockers($source),
             $this->banBlockers($source),
             $this->pluginBlockers($source),
@@ -69,6 +70,138 @@ SQL,
         }
 
         return $blockers;
+    }
+
+    /** @return list<string> */
+    private function identityGroupPolicyBlockers(Connection $source): array
+    {
+        $groupsTable = $source->quoteIdentifier($this->prefix->table('usergroups'));
+        $groupRows = $source->fetchAllAssociative(
+            'SELECT group_id, group_quota, can_upload_pictures, can_create_albums, pub_upl_need_approval, priv_upl_need_approval, access_level FROM '.$groupsTable.' ORDER BY group_id ASC',
+        );
+
+        /** @var array<string, array<string, mixed>> $groups */
+        $groups = [];
+        foreach ($groupRows as $row) {
+            $groupId = (string) $row['group_id'];
+            $quota = (int) $row['group_quota'];
+            $publicApproval = (int) $row['pub_upl_need_approval'];
+            $privateApproval = (int) $row['priv_upl_need_approval'];
+            $accessLevel = (int) $row['access_level'];
+
+            if ($quota < 0) {
+                return [sprintf('Coppermine group %s has invalid negative group_quota=%d.', $groupId, $quota)];
+            }
+            if (!in_array($publicApproval, [0, 1], true) || !in_array($privateApproval, [0, 1], true)) {
+                return [sprintf('Coppermine group %s has unsupported upload-approval flags; expected 0 or 1.', $groupId)];
+            }
+            if ($accessLevel < 0 || $accessLevel > 3) {
+                return [sprintf('Coppermine group %s has unsupported access_level=%d; expected 0..3.', $groupId, $accessLevel)];
+            }
+
+            $groups[$groupId] = $row;
+        }
+
+        $usersTable = $source->quoteIdentifier($this->prefix->table('users'));
+        $users = $source->fetchAllAssociative(
+            'SELECT user_id, user_group, user_group_list FROM '.$usersTable.' ORDER BY user_id ASC',
+        );
+
+        $blockers = [];
+
+        foreach ($users as $user) {
+            $userId = (string) $user['user_id'];
+            $groupIds = $this->sourceUserGroupIds(
+                (string) $user['user_group'],
+                (string) $user['user_group_list'],
+            );
+
+            $effectiveGroups = [];
+            $missing = false;
+
+            foreach ($groupIds as $groupId) {
+                if (!isset($groups[$groupId])) {
+                    $blockers[] = sprintf(
+                        'User %s references missing Coppermine group %s; effective permissions and policies cannot be migrated safely.',
+                        $userId,
+                        $groupId,
+                    );
+                    $missing = true;
+
+                    if (count($blockers) >= self::DETAIL_LIMIT) {
+                        return $blockers;
+                    }
+
+                    continue;
+                }
+
+                $effectiveGroups[] = $groups[$groupId];
+            }
+
+            if ($missing || $effectiveGroups === []) {
+                continue;
+            }
+
+            $quotas = array_map(static fn (array $group): int => (int) $group['group_quota'], $effectiveGroups);
+            $effectiveQuota = in_array(0, $quotas, true) ? 0 : max($quotas);
+            $canUpload = max(array_map(
+                static fn (array $group): int => max((int) $group['can_upload_pictures'], (int) $group['can_create_albums']),
+                $effectiveGroups,
+            )) > 0;
+            $publicApproval = min(array_map(static fn (array $group): int => (int) $group['pub_upl_need_approval'], $effectiveGroups));
+            $privateApproval = min(array_map(static fn (array $group): int => (int) $group['priv_upl_need_approval'], $effectiveGroups));
+            $accessLevel = max(array_map(static fn (array $group): int => (int) $group['access_level'], $effectiveGroups));
+
+            if ($effectiveQuota > 0) {
+                $blockers[] = sprintf(
+                    'User %s has effective Coppermine upload quota %d KiB; Mediarama currently uses an unlimited quota adapter and cannot preserve this limit.',
+                    $userId,
+                    $effectiveQuota,
+                );
+            }
+
+            if ($canUpload && $publicApproval === 1) {
+                $blockers[] = sprintf(
+                    'User %s requires Coppermine approval for public-album uploads; Mediarama has no equivalent migrated upload-approval policy yet.',
+                    $userId,
+                );
+            }
+
+            if ($canUpload && $privateApproval === 1) {
+                $blockers[] = sprintf(
+                    'User %s requires Coppermine approval for private/user-gallery uploads; Mediarama has no equivalent migrated upload-approval policy yet.',
+                    $userId,
+                );
+            }
+
+            if ($accessLevel < 3) {
+                $blockers[] = sprintf(
+                    'User %s has effective Coppermine access_level=%d; Mediarama does not yet preserve thumbnail/intermediate/full-size access tiers.',
+                    $userId,
+                    $accessLevel,
+                );
+            }
+
+            if (count($blockers) >= self::DETAIL_LIMIT) {
+                return array_slice($blockers, 0, self::DETAIL_LIMIT);
+            }
+        }
+
+        return $blockers;
+    }
+
+    /** @return list<string> */
+    private function sourceUserGroupIds(string $primary, string $additional): array
+    {
+        $ids = [trim($primary)];
+
+        foreach (preg_split('/[^0-9]+/', $additional) ?: [] as $value) {
+            if ($value !== '') {
+                $ids[] = $value;
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids, static fn (string $id): bool => $id !== '')));
     }
 
     /** @return list<string> */

@@ -273,6 +273,42 @@ jobs:
             -e "DELETE FROM cpg_users WHERE user_id = 99;"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET group_quota = 1024 WHERE group_id = 3;"
+          assert_inspect_blocked effective-group-quota 'User 1 has effective Coppermine upload quota 1024 KiB; Mediarama currently uses an unlimited quota adapter and cannot preserve this limit.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET group_quota = 0 WHERE group_id = 3;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET pub_upl_need_approval = 1 WHERE group_id = 3;"
+          assert_inspect_blocked public-upload-approval 'User 1 requires Coppermine approval for public-album uploads; Mediarama has no equivalent migrated upload-approval policy yet.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET pub_upl_need_approval = 0 WHERE group_id = 3;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET priv_upl_need_approval = 1 WHERE group_id = 3;"
+          assert_inspect_blocked private-upload-approval 'User 1 requires Coppermine approval for private/user-gallery uploads; Mediarama has no equivalent migrated upload-approval policy yet.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET priv_upl_need_approval = 0 WHERE group_id = 3;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET access_level = 2 WHERE group_id = 3;"
+          assert_inspect_blocked derivative-access-tier 'User 1 has effective Coppermine access_level=2; Mediarama does not yet preserve thumbnail/intermediate/full-size access tiers.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_usergroups SET access_level = 3 WHERE group_id = 3;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_group = 999 WHERE user_id = 1;"
+          assert_inspect_blocked missing-user-group 'User 1 references missing Coppermine group 999; effective permissions and policies cannot be migrated safely.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_group = 3 WHERE user_id = 1;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "INSERT INTO cpg_usergroups (group_id, group_name, group_quota, can_upload_pictures, can_create_albums, pub_upl_need_approval, priv_upl_need_approval, access_level) VALUES (4, 'Liberal Supplement', 0, 0, 0, 0, 0, 3), (5, 'Restrictive Primary', 1024, 1, 1, 1, 1, 2); UPDATE cpg_users SET user_group = 5, user_group_list = '4' WHERE user_id = 1;"
+          php bin/console mediarama:import:coppermine:inspect > /tmp/coppermine-effective-groups.txt
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_group = 3, user_group_list = '' WHERE user_id = 1; DELETE FROM cpg_usergroups WHERE group_id IN (4, 5);"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_pictures SET user1 = 'fixture custom value' WHERE pid = 100;"
           assert_inspect_blocked media-custom-field 'Picture 100 has populated Coppermine custom media field(s): user1; no explicit Mediarama field mapping exists yet.'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
