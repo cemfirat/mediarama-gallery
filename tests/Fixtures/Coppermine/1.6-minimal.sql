@@ -101,6 +101,12 @@ CREATE TABLE cpg_pictures (
   guest_token VARCHAR(32) DEFAULT ''
 );
 
+CREATE TABLE cpg_categorymap (
+  cid INT NOT NULL,
+  group_id INT NOT NULL,
+  PRIMARY KEY (cid, group_id)
+);
+
 CREATE TABLE cpg_comments (
   pid INT NOT NULL DEFAULT 0,
   msg_id INT NOT NULL PRIMARY KEY,
@@ -186,6 +192,9 @@ INSERT INTO cpg_pictures (
   '2024-01-01 12:00:00', 1704110400, 1, 8000, 1,
   'Fixture Photo', 'Imported fixture caption', 'summer;vacation', 'YES', 1
 );
+
+INSERT INTO cpg_categorymap (cid, group_id)
+VALUES (2, 3);
 
 INSERT INTO cpg_comments (
   pid, msg_id, msg_author, msg_body, msg_date, author_id, approval, spam
