@@ -5,30 +5,30 @@ declare(strict_types=1);
 namespace Mediarama\Media\Infrastructure\Image;
 
 use Mediarama\Media\Application\InspectImageFileGeometry;
-use Symfony\Component\Process\Process;
 
 final readonly class ImageMagickFileGeometryInspector implements InspectImageFileGeometry
 {
-    public function __construct(private string $identifyBinary = 'identify')
+    public function __construct(private ImageMagickProcess $process)
     {
     }
 
     public function __invoke(string $path): array
     {
-        $process = new Process([
-            $this->identifyBinary,
-            '-format',
-            '%w %h %[orientation]',
-            $path.'[0]',
-        ]);
-        $process->setTimeout(30);
-        $process->run();
-
-        if (!$process->isSuccessful()) {
-            throw new \RuntimeException('Unable to inspect image geometry: '.trim($process->getErrorOutput()));
+        try {
+            $output = $this->process->identify([
+                '-format',
+                '%w %h %[orientation]',
+                $path.'[0]',
+            ]);
+        } catch (\RuntimeException $error) {
+            throw new \RuntimeException(
+                'Unable to inspect image geometry: '.$error->getMessage(),
+                0,
+                $error,
+            );
         }
 
-        $parts = preg_split('/\s+/', trim($process->getOutput()));
+        $parts = preg_split('/\s+/', trim($output));
         if ($parts === false || count($parts) < 2) {
             throw new \RuntimeException('Image geometry response is invalid.');
         }

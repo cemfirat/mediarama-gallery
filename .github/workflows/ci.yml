@@ -52,6 +52,17 @@ jobs:
       EXIFTOOL_BINARY: exiftool
       IMAGEMAGICK_BINARY: convert
       IMAGEMAGICK_IDENTIFY_BINARY: identify
+      IMAGEMAGICK_LIMIT_MEMORY: 256MiB
+      IMAGEMAGICK_LIMIT_MAP: 512MiB
+      IMAGEMAGICK_LIMIT_DISK: 2GiB
+      IMAGEMAGICK_LIMIT_AREA: 512MiB
+      IMAGEMAGICK_LIMIT_WIDTH: 32768
+      IMAGEMAGICK_LIMIT_HEIGHT: 32768
+      IMAGEMAGICK_LIMIT_FILES: 128
+      IMAGEMAGICK_LIMIT_THREADS: 2
+      IMAGEMAGICK_LIMIT_TIME_SECONDS: 45
+      IMAGEMAGICK_LIMIT_LIST_LENGTH: 32
+      IMAGEMAGICK_PROCESS_TIMEOUT_SECONDS: 60
       UPLOAD_MAX_ASSET_BYTES: 2147483648
       UPLOAD_MAX_CHUNK_BYTES: 16777216
       COPPERMINE_DATABASE_URL: mysql://readonly:readonly@127.0.0.1:3306/coppermine
@@ -88,6 +99,9 @@ jobs:
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Verify ImageMagick application resource envelope
+        run: php tests/Integration/ImageMagick/resource-limits.php
 
       - name: Build UIkit frontend
         run: |
