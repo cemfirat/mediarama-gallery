@@ -1,7 +1,7 @@
 # Coppermine → Mediarama migration loss matrix
 
-Status: **provisional — gaps intentionally visible**
-Date: 2026-09-25
+Status: **provisional — intentional omissions classified; unresolved blockers remain**
+Date: 2026-09-26
 Tracking: #8, #11
 
 This matrix exists to prevent the importer from being declared complete merely because albums, pictures, users, comments and ratings migrate successfully.
@@ -25,10 +25,10 @@ Each source concept must end in one of these states:
 | `bridge` | external-application bridge configuration | enabled bridging is rejected by preflight | Unsupported / block | local Coppermine users are not treated as authoritative while bridging is enabled |
 | `categories` | hierarchy, ownership, structural grouping, explicit cover | importer preserves hierarchy/ownership and positive explicit cover PIDs | Transform | real-gallery tests remain |
 | `categorymap` | groups allowed to create albums in categories | imported to category collection `collection.create_child` ACL entries | Transform | real-gallery permission validation remains |
-| `comments` | comments, author, moderation/spam | importer exists | Transform | real guest/moderation tests; historical IP deliberately excluded |
+| `comments` | comments, author, moderation/spam | registered/guest authors, body, timestamp and moderation/spam state migrate; historical IP is deliberately excluded | Transform + privacy reduction | real-gallery validation remains |
 | `config` | large installation-wide behavior/config surface | only selected values read | Transform | build explicit allowlist of migratable behavior; never bulk-copy |
-| `dict` | keyword dictionary | not migrated | likely Intentional omission / rebuild | confirm dictionary is derived and can be regenerated from tags |
-| `ecards` | sent e-card history including sender/recipient emails and sender IP | not migrated | unresolved, likely Intentional omission | privacy/legal/product decision; do not import by default without reason |
+| `dict` | derived keyword dictionary | not migrated; source picture keywords are normalized into tags/media_tags | Intentional omission / rebuild | none: Coppermine itself rebuilds this table from `pictures.keywords` |
+| `ecards` | optional sent-e-card log with sender/recipient identity/contact data, IP and encoded payload | not migrated into Mediarama product storage | Intentional omission | separate restricted archive/export only if a specific installation has a retention obligation |
 | `exif` | persisted EXIF blob per picture | source file metadata currently re-extracted instead | Transform | compare stored EXIF vs source-file metadata; preserve source-only fields if necessary |
 | `favpics` | authenticated-user favorites serialized in source | decoded for mapped users/pictures and imported to normalized favorites | Transform | anonymous browser-local favorites remain an intentional limitation |
 | `filetypes` | extension→MIME→content type→player registry | not migrated | Transform | distinguish built-in defaults from site customizations; map relevant custom media policies |
@@ -36,12 +36,12 @@ Each source concept must end in one of these states:
 | `languages` | installed/available/enabled language definitions | not migrated | likely Transform / configuration | map only installation language preferences, not runtime implementation |
 | `pictures` | media records, metadata, ownership, approval, counters, custom fields, user-gallery icon, source-root selector | core media import preserves aggregate `hits` as media `view_count`; non-empty `user1..4`, non-zero `galleryicon` and non-zero `url_prefix` block preflight | Transform + explicit blockers | design target custom-field/user-gallery representation models; multi-root source addressing requires an explicit source resolver |
 | `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
-| `sessions` | active login sessions | not migrated | Intentional omission | document security rationale; never migrate sessions |
-| `temp_messages` | transient cross-page messages | not migrated | Intentional omission | document as ephemeral |
+| `sessions` | active login/remember-me runtime state | not migrated | Intentional omission | legacy authentication/session credentials expire with Coppermine; users establish new Mediarama auth state |
+| `temp_messages` | transient redirect/cross-page status messages | not migrated | Intentional omission | deleted after fetch/cleanup; request-flow state, not content |
 | `usergroups` | global capabilities, quotas, upload approval, access tier, e-card capability | major capabilities migrate; effective finite quota/approval/access-tier semantics now block preflight until equivalent target policy exists | Transform + explicit blockers | implement persistent quota/accounting and deliberate moderation/derivative-access policy if parity is required; e-card capability is intentionally omitted with the feature |
 | `users` | local identities, profiles, activation/status | core identity import exists; non-empty `user_profile1..6` now blocks preflight | Transform + explicit blockers | design profile-field target mapping; activation tokens are intentionally not reusable; bridged identities remain unsupported |
-| `votes` | basic per-voter anti-repeat records without rating value | not reconstructed individually | Historical / omit detail | aggregate/detailed vote strategy already documented |
-| `vote_stats` | detailed ratings + IP/referrer/browser/OS/user | user-linked rating values partly migrated | Transform + privacy reduction | retain rating value/identity when recoverable; deliberately omit network/client telemetry |
+| `votes` | per-voter anti-repeat records without the individual rating value | individual rating is not fabricated; source aggregate remains preserved | Historical / intentional omission of unrecoverable detail | none unless separate recoverable detailed rating data exists |
+| `vote_stats` | detailed ratings + IP/referrer/browser/OS/user | recoverable user-linked rating value/time migrate; network/client telemetry does not | Transform + intentional privacy reduction | no raw telemetry import by default |
 
 ## Important non-table behavior/data
 
@@ -97,22 +97,13 @@ The table is site data/configuration, so an installation can differ from default
 
 Mediarama must not infer import support merely from filename extension. It should continue content inspection, but the migration audit must preserve awareness of source custom file-type policy and unsupported media.
 
-## Category creation rights: newly identified gap
+## Category creation rights
 
-`categorymap` is actively used in 1.6 to determine which groups may create/manage albums in specific categories.
+`categorymap` is actively used in Coppermine to determine which groups may create/manage albums in specific categories. This is semantically different from album visibility.
 
-It participates in:
+The importer now maps these rows to collection-scoped `collection.create_child` allow rules, with CI coverage for the source category/group mapping.
 
-- album manager category availability;
-- category manager group assignment;
-- user public-album creation capability;
-- edit/delete authorization.
-
-This is semantically different from album visibility.
-
-The current Mediarama ACL importer covers **view access**, but not this category-scoped **creation/management capability**.
-
-This gap must be resolved before permission migration is considered complete.
+Classification: **Transform**. Real-gallery permission validation remains, but this is no longer an unimplemented migration gap.
 
 ## User-group policy semantics
 
@@ -154,26 +145,18 @@ Negative legacy counter values are treated as corrupt source state and block pre
 
 The detailed `hit_stats` rows are an **intentional omission** from the core migration. Analytics/audit retention can be designed separately if there is a concrete legal or product requirement; it is not copied merely for Coppermine parity.
 
-## Privacy-sensitive historical tables
+## Privacy-sensitive historical data
 
-Several Coppermine tables carry historical personal/network data:
+The final omission policy is centralized in `docs/research/coppermine-intentional-omissions.md`.
 
-- e-card sender/recipient email + sender IP;
-- hit statistics IP/referrer/browser/OS/search phrase;
-- vote statistics IP/referrer/browser/OS;
-- comments historical raw/header IP;
-- picture upload/last-hit IP fields;
-- bans by IP/email/name.
+In summary:
 
-Mediarama should not bulk-copy these fields merely for parity.
-
-For each one, the final migration policy must document:
-
-- product value;
-- legal/privacy value;
-- retention necessity;
-- whether an aggregate is sufficient;
-- whether the field should be intentionally discarded.
+- aggregate media/album views are preserved, raw `hit_stats` telemetry is not;
+- recoverable rating values/identity are preserved, vote client/network telemetry is not;
+- comments retain content/author/time/moderation, not historical IP addresses;
+- picture upload/last-hit IP fields are not migrated;
+- e-card correspondence/log data is not imported into the Mediarama product database;
+- bans are **not** treated as an omission: a non-empty ban table blocks migration because it is active security state.
 
 
 
@@ -206,6 +189,14 @@ Migration rules:
 - after media import, the corresponding picture mapping becomes the target collection cover;
 - non-positive values remain unpinned because Coppermine uses them for automatic/dynamic behavior such as “last uploaded” or random album thumbnails;
 - Mediarama does not freeze a runtime-random source choice into permanent migrated data.
+
+## Intentional omission policy
+
+Every deliberate omission/reduction currently identified by the migration audit is listed with primary-source rationale in `docs/research/coppermine-intentional-omissions.md`.
+
+This includes derived dictionaries, sessions, temporary messages, e-cards, detailed hit telemetry, comment/picture network identifiers, vote client telemetry/unrecoverable detail, anonymous browser-local favorites, legacy security tokens, the Coppermine plugin registry as target runtime state, and dynamic cover selection.
+
+A new omission must be added to that document and this matrix before it can be considered deliberate rather than accidental.
 
 ## Exit condition
 

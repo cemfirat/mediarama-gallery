@@ -1,7 +1,7 @@
 # Coppermine exit audit
 
 Status: **open — architecture closure explicitly blocked**
-Date: 2026-09-25
+Date: 2026-09-26
 
 Mediarama must not declare Coppermine research complete merely because the importer works or because the main architectural direction is already clear.
 
@@ -162,6 +162,24 @@ Every identified Coppermine capability/data type must end with one of these clas
 
 No feature should disappear merely because it was missed during research.
 
+## Intentional omissions now explicitly classified
+
+The migration audit now has a single omission policy in `docs/research/coppermine-intentional-omissions.md`.
+
+It distinguishes deliberate non-migration from unresolved gaps and documents the rationale for:
+
+- derived keyword dictionary rows;
+- live sessions and temporary redirect messages;
+- the legacy e-card feature/log;
+- detailed hit/vote/client/network telemetry while retaining useful aggregates;
+- comment/picture historical IP fields;
+- anonymous browser-local favorites;
+- legacy activation/session/unlock credentials;
+- the Coppermine plugin registry as target runtime state;
+- automatic/random cover choices that are rules rather than stable media selections.
+
+This closes the documentation task for **currently identified** intentional omissions. It does not close the migration audit itself: unsupported/blocking source states, real-gallery evidence and provenance/licensing remain open.
+
 ## Architecture closure gate
 
 Coppermine is **not** considered closed as an architecture topic until all of the following are true:
@@ -180,19 +198,16 @@ Until that point, the statement is:
 
 > Mediarama has its own architecture direction, but Coppermine research remains open and can still change requirements or migration design.
 
-## Next deep-audit batches
+## Remaining exit-audit batches
 
-The next research passes should cover, in order:
+The broad source inventory and synthetic migration gates are now substantially covered. Remaining work should focus on evidence that cannot be replaced by more synthetic discovery:
 
-1. complete top-level feature/entry-point inventory;
-2. database schema + upgrade history diff;
-3. media lifecycle and all admin maintenance workflows;
-4. search/favorites/date/meta-albums;
-5. metadata/EXIF/IPTC and custom media types;
-6. users/groups/bridges/bans/privacy/password albums;
-7. comments/ratings/e-cards/reporting/statistics;
-8. plugin hooks/theme overrides/localization;
-9. installation/upgrade/logging/repair/security history;
-10. migration loss matrix and real-gallery tests.
+1. migrate at least one representative real/anonymized 1.6 installation;
+2. finish custom source file-type/config/language policy decisions;
+3. finish source-only persisted EXIF comparison where file re-extraction may be insufficient;
+4. classify remaining per-album behavior flags such as upload/comment/vote policy;
+5. make import persistence source/run scoping production-safe before beta;
+6. complete source provenance and licensing review;
+7. write the final architecture-exit ADR only after those gates are satisfied.
 
-Only after these batches are complete should the Coppermine architecture exit ADR be written.
+Coppermine remains an open migration/reference topic until those gates close.
