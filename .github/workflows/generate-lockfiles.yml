@@ -48,7 +48,7 @@ jobs:
           test -s symfony.lock
 
           rm -rf vendor
-          composer install --no-interaction --prefer-dist --no-progress --no-audit
+          composer install --no-interaction --prefer-dist --no-progress
           git diff --exit-code -- .env config
           composer validate --strict
 
