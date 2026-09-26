@@ -169,6 +169,14 @@ INSERT INTO cpg_albums (
   1, '5ebe2294ecd0e0f08eab7690d2a6ee69', 'fixture hint'
 );
 
+INSERT INTO cpg_albums (
+  aid, title, description, visibility, uploads, comments, votes, pos, category,
+  owner, keyword
+) VALUES (
+  11, 'Linked Album', 'Membership comes from album keyword', 0, 'NO', 'YES', 'YES', 2, 2,
+  1, 'summer'
+);
+
 INSERT INTO cpg_pictures (
   pid, aid, filepath, filename, filesize, total_filesize, pwidth, pheight, hits,
   mtime, ctime, owner_id, pic_rating, votes, title, caption, keywords, approved,
