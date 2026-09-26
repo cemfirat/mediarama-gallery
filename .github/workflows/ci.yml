@@ -147,6 +147,7 @@ jobs:
               'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 1,
               'restricted password-reset collection' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND visibility = 'restricted' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
               'tags' => (int) $db->fetchOne('SELECT COUNT(*) FROM tags') === 2,
+              'album-keyword membership' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_media cm JOIN collections c ON c.id = cm.collection_id JOIN media_assets m ON m.id = cm.media_id WHERE c.title = 'Linked Album' AND m.original_filename = 'sample.jpg'") === 1,
               'comment' => (int) $db->fetchOne("SELECT COUNT(*) FROM comments WHERE body = 'Fixture comment'") === 1,
               'favorite' => (int) $db->fetchOne('SELECT COUNT(*) FROM favorites') === 1,
               'rating' => (int) $db->fetchOne('SELECT COUNT(*) FROM ratings WHERE value = 4') === 1,
