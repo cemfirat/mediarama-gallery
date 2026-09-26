@@ -1,7 +1,7 @@
 # Mediarama source provenance and Coppermine reuse audit
 
-Status: **provisional — repository-level source audit completed, legal/final-license sign-off still open**
-Date: 2026-09-25
+Status: **history-aware technical provenance audit automated; final project-license governance decision still open**
+Date: 2026-09-26
 Tracking: #11
 
 ## Purpose
@@ -47,6 +47,28 @@ Search hits for `cpg_` are limited to:
 - research documentation.
 
 This is positive evidence that the current Mediarama `src/` implementation was not created by mechanically copying obvious Coppermine PHP functions/classes.
+
+
+## Full-history marker audit
+
+The current-tree search is now backed by a repeatable Git-history control.
+
+CI checks out the repository with `fetch-depth: 0` and runs `.github/scripts/audit-coppermine-provenance-history.sh`. The script scans the patch history of application and test code across every commit reachable from the PR head and fails if it finds implementation-specific Coppermine markers such as:
+
+- `IN_COPPERMINE`;
+- `cpg_db_query(`;
+- `CPGPluginAPI::`;
+- `template_eval(`;
+- `cpg_die(`;
+- `get_pic_url(`;
+- `cpg_get_type(`;
+- `cpg_get_alb_keyword`;
+- `cpgSanitize`;
+- Coppermine copyright/project signatures.
+
+Research documentation, CI plumbing and the deliberately synthetic Coppermine SQL fixtures are excluded from this mechanical scan because those areas intentionally contain source names/schema facts.
+
+A marker scan is not a mathematical proof that no code was ever semantically rewritten or renamed. It is a reproducible historical guard against the most likely accidental copy/paste paths and complements the architectural/manual review in this document.
 
 ## Coppermine names in application source
 
@@ -106,6 +128,14 @@ Because the current evidence supports a clean implementation, GPL is **not estab
 
 The final project license is therefore still a project/governance decision unless a later audit finds copied/adapted GPL implementation code.
 
+
+Both upstream reference lines checked for this audit carry the GNU GPL v3 license text:
+
+- Coppermine 1.6.x: `LICENSE.txt`;
+- Coppermine 1.7.x: `LICENSE`.
+
+Keeping Mediarama at `GPL-3.0-or-later` is therefore license-compatible with a future deliberate GPL-compatible reuse path, but compatibility does not remove the need to preserve upstream copyright/provenance notices if actual upstream code is ever copied or adapted.
+
 ## LICENSE-file quality issue
 
 The current root `LICENSE` starts with the GPL v3 heading and initial paragraph but does **not** contain the complete canonical GPLv3 license text; it points to the FSF for the remainder.
@@ -138,7 +168,7 @@ These differences do not by themselves prove legal independence, but they are co
 
 Before closing the licensing/provenance gate:
 
-- inspect the full Git history for any temporarily copied Coppermine source later rewritten/deleted;
+- keep the automated full-history marker audit green and manually review any future similarity/provenance exception;
 - inspect migration fixtures and any future real-gallery fixtures;
 - inspect future importer code added from upstream examples;
 - inspect any copied theme/UI assets;
@@ -176,10 +206,12 @@ That makes later license review auditable.
 
 The targeted repository search finds **no obvious Coppermine runtime implementation copied into Mediarama application source**.
 
-However this is not yet the final licensing exit gate because:
+The automated history marker audit adds evidence that obvious upstream implementation code was not temporarily committed and later removed from application/test paths.
 
-- full historical similarity review is still pending;
-- fixtures/assets need final provenance classification;
+This is not yet the final licensing exit gate because:
+
+- marker-based history review cannot by itself exclude heavily rewritten/renamed derivation;
+- fixtures/assets still need final provenance classification;
 - the project owner has not yet made a deliberately documented final license choice.
 
 Issue #11 should remain open.

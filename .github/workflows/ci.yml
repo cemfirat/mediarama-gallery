@@ -60,6 +60,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Audit Coppermine source provenance across Git history
+        run: bash .github/scripts/audit-coppermine-provenance-history.sh
 
       - uses: shivammathur/setup-php@v2
         with:
