@@ -148,6 +148,7 @@ jobs:
               'restricted password-reset collection' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND visibility = 'restricted' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
               'tags' => (int) $db->fetchOne('SELECT COUNT(*) FROM tags') === 2,
               'comment' => (int) $db->fetchOne("SELECT COUNT(*) FROM comments WHERE body = 'Fixture comment'") === 1,
+              'favorite' => (int) $db->fetchOne('SELECT COUNT(*) FROM favorites') === 1,
               'rating' => (int) $db->fetchOne('SELECT COUNT(*) FROM ratings WHERE value = 4') === 1,
               'reset-required user' => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = 'fixture-user' AND status = 'password_reset_required'") === 1,
               'empty async queue' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,
