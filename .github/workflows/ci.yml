@@ -284,9 +284,62 @@ jobs:
           }
           PHP
 
-      - name: Verify Coppermine 1.7 capability detection
+      - name: Verify meaningful Coppermine 1.7 migration sample
         run: |
-          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
-            < tests/Fixtures/Coppermine/1.7-variation.sql
-          php bin/console mediarama:import:coppermine:inspect | tee /tmp/coppermine-inspect.txt
-          grep -F "Detected: 1.7.x-compatible" /tmp/coppermine-inspect.txt
+          php -r '
+          $pdo = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=postgres", "mediarama", "mediarama", [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+          $pdo->exec("DROP DATABASE IF EXISTS mediarama17");
+          $pdo->exec("CREATE DATABASE mediarama17");
+          '
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "DROP DATABASE IF EXISTS coppermine17; CREATE DATABASE coppermine17 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine17             < tests/Fixtures/Coppermine/1.6-minimal.sql
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine17             < tests/Fixtures/Coppermine/1.7-variation.sql
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "GRANT SELECT ON coppermine17.* TO 'readonly'@'%'; FLUSH PRIVILEGES;"
+
+          mkdir -p /tmp/coppermine17-albums/userpics
+          cp /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine17-albums/userpics/sample.jpg
+          cp /tmp/coppermine-albums/userpics/sample2.jpg /tmp/coppermine17-albums/userpics/sample2.jpg
+          cp /tmp/coppermine-albums/userpics/sample.mp3 /tmp/coppermine17-albums/userpics/sample.mp3
+          cp /tmp/coppermine-albums/userpics/sample.mp4 /tmp/coppermine17-albums/userpics/sample.mp4
+          convert -size 2x2 xc:white /tmp/coppermine17-albums/userpics/sample.webp
+
+          export DATABASE_URL="postgresql://mediarama:mediarama@127.0.0.1:5432/mediarama17?serverVersion=18&charset=utf8"
+          export MEDIA_STORAGE_PATH="/tmp/mediarama17-media"
+          export COPPERMINE_DATABASE_URL="mysql://readonly:readonly@127.0.0.1:3306/coppermine17"
+          export COPPERMINE_TABLE_PREFIX="cpg_"
+          export COPPERMINE_ALBUMS_ROOT="/tmp/coppermine17-albums"
+
+          php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          php bin/console mediarama:import:coppermine:inspect | tee /tmp/coppermine17-inspect.txt
+          grep -F "Detected: 1.7.x-compatible" /tmp/coppermine17-inspect.txt
+          grep -F "pictures: 5" /tmp/coppermine17-inspect.txt
+
+          php bin/console mediarama:import:coppermine
+          php bin/console messenger:consume async --limit=5 --time-limit=30 --no-interaction -vv
+
+          php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+
+          $dsn = new Doctrine\DBAL\Tools\DsnParser([
+              'postgresql' => 'pdo_pgsql',
+              'postgres' => 'pdo_pgsql',
+          ]);
+          $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
+          $checks = [
+              'completed 1.7 import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_version = '1.7.x-compatible' AND status = 'completed'") === 1,
+              'five migrated 1.7 media' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 5,
+              '1.7 WebP ready' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.webp' AND mime_type = 'image/webp' AND media_type = 'image' AND processing_state = 'ready'") === 1,
+              '1.7 audio ready' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,
+              '1.7 video ready' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp4' AND mime_type = 'video/mp4' AND media_type = 'video' AND processing_state = 'ready'") === 1,
+              '1.7 async queue drained' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,
+          ];
+
+          foreach ($checks as $name => $ok) {
+              echo ($ok ? 'OK ' : 'FAIL ').$name.PHP_EOL;
+              if (!$ok) {
+                  exit(1);
+              }
+          }
+          PHP
