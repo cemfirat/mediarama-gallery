@@ -107,7 +107,7 @@ final readonly class FinalizeUpload
             $content = $this->inspectAndValidate($session, $object);
 
             return [$content, $reservedMediaId];
-        } catch (\Throwable $error) {
+        } catch (\Exception $error) {
             // A concurrent request may have completed validation, reserved the
             // shared MediaAsset ID and promoted the temporary object between
             // our two inspection reads. Recover through that durable target.

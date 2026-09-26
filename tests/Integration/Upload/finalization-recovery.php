@@ -369,9 +369,10 @@ try {
     echo "OK retry after finalization mapping\n";
     echo "OK dispatch crash is recovered with at-least-once delivery\n";
 } finally {
-    foreach ($createdMedia as $mediaId) {
-        $db->executeStatement('DELETE FROM media_assets WHERE id = :id', ['id' => $mediaId->toRfc4122()]);
-    }
+    // Delete by owner as well as by the IDs we observed. This keeps CI clean
+    // even when one concurrent worker persisted media before the parent could
+    // parse its result.
+    $db->executeStatement('DELETE FROM media_assets WHERE owner_id = :id', ['id' => $userId->toRfc4122()]);
     $db->executeStatement('DELETE FROM upload_sessions WHERE user_id = :id', ['id' => $userId->toRfc4122()]);
     $db->executeStatement('DELETE FROM users WHERE id = :id', ['id' => $userId->toRfc4122()]);
     removeTree($root);
