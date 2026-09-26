@@ -32,6 +32,9 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
         $output = tempnam(sys_get_temp_dir(), 'mediarama-image-out-');
 
         if ($input === false || $output === false) {
+            if (is_resource($source)) {
+                fclose($source);
+            }
             throw new \RuntimeException('Unable to allocate image processing files.');
         }
 
@@ -40,6 +43,7 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
         try {
             $inputHandle = fopen($input, 'wb');
             if ($inputHandle === false) {
+                fclose($source);
                 throw new \RuntimeException('Unable to open temporary image input.');
             }
 
@@ -61,7 +65,7 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
                 $outputWithExtension,
             ];
 
-            $this->process->run($arguments);
+            $this->process->convert($arguments);
 
             $imageInfo = getimagesize($outputWithExtension);
             if ($imageInfo === false) {
@@ -84,8 +88,11 @@ final readonly class ImageMagickDerivativeGenerator implements ImageDerivativeGe
                 throw new \RuntimeException('Unable to read generated derivative.');
             }
 
-            $stored = $this->storage->write($storageId, $stream, $imageInfo['mime'] ?? null);
-            fclose($stream);
+            try {
+                $stored = $this->storage->write($storageId, $stream, $imageInfo['mime'] ?? null);
+            } finally {
+                fclose($stream);
+            }
 
             $now = new DateTimeImmutable();
 
