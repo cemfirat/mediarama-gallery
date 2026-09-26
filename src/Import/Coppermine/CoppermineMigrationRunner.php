@@ -85,10 +85,11 @@ SQL,
 
             $this->stage($runId, 'keywords');
             $keywords = $this->keywords->import();
-            if ($keywords->unmappedPictureIds !== []) {
+            if ($keywords->unmappedPictureIds !== [] || $keywords->unmappedAlbumIds !== []) {
                 throw new \RuntimeException(sprintf(
-                    'Keyword migration found %d unmapped picture(s).',
+                    'Keyword migration found %d unmapped picture(s) and %d unmapped album(s).',
                     count($keywords->unmappedPictureIds),
+                    count($keywords->unmappedAlbumIds),
                 ));
             }
 
