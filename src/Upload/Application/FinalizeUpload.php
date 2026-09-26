@@ -54,6 +54,7 @@ final readonly class FinalizeUpload
                             // mapping existed but the session was not completed.
                             $locked->complete();
                             $this->sessions->save($locked);
+                            $this->bus->dispatch(new ProcessMedia($sessionId->toRfc4122()));
                         }
                     },
                 );
