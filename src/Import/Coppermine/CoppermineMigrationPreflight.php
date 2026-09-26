@@ -31,6 +31,7 @@ final readonly class CoppermineMigrationPreflight
             $this->identityGroupPolicyBlockers($source),
             $this->bridgeBlockers($source),
             $this->banBlockers($source),
+            $this->unknownPrefixedTableBlockers($source),
             $this->pluginBlockers($source),
             $this->privateAlbumConfigurationBlockers($source),
             $this->moderatorGroupBlockers($source),
@@ -387,6 +388,33 @@ SQL,
             $manual,
             max(0, $total - $manual),
         )];
+    }
+
+    /** @return list<string> */
+    private function unknownPrefixedTableBlockers(Connection $source): array
+    {
+        $knownTables = [];
+        foreach (CoppermineCoreSchema::TABLE_SUFFIXES as $suffix) {
+            $knownTables[$this->prefix->table($suffix)] = true;
+        }
+
+        $blockers = [];
+        foreach ($source->createSchemaManager()->listTableNames() as $table) {
+            if (!str_starts_with($table, $this->prefix->value) || isset($knownTables[$table])) {
+                continue;
+            }
+
+            $blockers[] = sprintf(
+                'Unknown Coppermine-prefixed table "%s" is not part of the audited 1.6/1.7 core schema; it may contain plugin/custom data and must be audited and resolved before migration.',
+                $table,
+            );
+
+            if (count($blockers) >= self::DETAIL_LIMIT) {
+                break;
+            }
+        }
+
+        return $blockers;
     }
 
     /** @return list<string> */

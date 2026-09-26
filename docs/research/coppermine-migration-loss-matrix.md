@@ -35,7 +35,7 @@ Each source concept must end in one of these states:
 | `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | raw rows are intentionally not migrated; aggregate `pictures.hits` / `albums.alb_hits` are preserved separately as `view_count` | Intentional omission of raw telemetry + Direct aggregate preservation | retain product counters without copying privacy-heavy network/client history |
 | `languages` | installed/available/enabled language definitions | required as migration lookup; user language IDs map through `abbr` to target locale | Transform | runtime language files, autodetection/enabled-list behavior and display labels are not copied as target configuration |
 | `pictures` | media records, metadata, ownership, approval, counters, custom fields, user-gallery icon, source-root selector | core media import preserves aggregate `hits` as media `view_count`; non-empty `user1..4`, non-zero `galleryicon` and non-zero `url_prefix` block preflight | Transform + explicit blockers | design target custom-field/user-gallery representation models; multi-root source addressing requires an explicit source resolver |
-| `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
+| `plugins` | installed plugin registry, enablement and priority; plugin/custom tables may remain independently | registry itself is not migrated; installed rows and unknown Coppermine-prefixed tables block preflight | Intentional omission as runtime registry + plugin/custom-data blocker | audit/resolve each installed plugin and any unknown prefixed table before core migration |
 | `sessions` | active login/remember-me runtime state | not migrated | Intentional omission | legacy authentication/session credentials expire with Coppermine; users establish new Mediarama auth state |
 | `temp_messages` | transient redirect/cross-page status messages | not migrated | Intentional omission | deleted after fetch/cleanup; request-flow state, not content |
 | `usergroups` | global capabilities, quotas, upload approval, access tier, e-card capability | major capabilities migrate; effective finite quota/approval/access-tier semantics now block preflight until equivalent target policy exists | Transform + explicit blockers | implement persistent quota/accounting and deliberate moderation/derivative-access policy if parity is required; e-card capability is intentionally omitted with the feature |
@@ -95,9 +95,13 @@ Installed plugins can execute install/uninstall/configuration code and may maint
 Required migration behavior:
 
 1. enumerate installed plugins;
-2. identify plugin-specific persisted data;
-3. classify each plugin as supported migration / custom migration / intentional omission / blocker;
-4. warn before migration when unknown plugin data may be lost.
+2. inventory the audited Coppermine core-table set;
+3. detect extra tables using the configured Coppermine prefix even when no plugin registry row remains;
+4. identify plugin/custom persisted data;
+5. classify each extension as supported migration / custom migration / intentional omission / blocker;
+6. block before writes while unknown prefixed tables or installed plugins remain unresolved.
+
+Mediarama now implements both database-level checks: a non-empty plugin registry blocks, and any prefixed table outside the audited 1.6/1.7 core table set blocks. This does not prove that an extension never stored data under another prefix or outside the database; real-installation validation still needs the operator to review extension/customization history.
 
 ### Coppermine EXIF cache
 
@@ -347,4 +351,4 @@ This is an **unsupported-and-block** classification, not an intentional discard.
 
 The core `plugins` table records plugin name/path/enabled state/priority, but Coppermine plugins can maintain separate tables, files and configuration. Persisted data can remain after a plugin is disabled.
 
-The registry itself is not imported into Mediarama runtime state. Any installed plugin row instead blocks core migration until that plugin has been audited or explicitly waived.
+The registry itself is not imported into Mediarama runtime state. Any installed plugin row or unknown Coppermine-prefixed table blocks core migration until the extension/custom data has been audited and resolved.

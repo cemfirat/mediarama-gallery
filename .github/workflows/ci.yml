@@ -435,6 +435,12 @@ jobs:
             -e "DELETE FROM cpg_banned;"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "CREATE TABLE cpg_orphan_plugin_data (id INT NOT NULL PRIMARY KEY);"
+          assert_inspect_blocked unknown-prefixed-table 'Unknown Coppermine-prefixed table "cpg_orphan_plugin_data" is not part of the audited 1.6/1.7 core schema; it may contain plugin/custom data and must be audited and resolved before migration.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "DROP TABLE cpg_orphan_plugin_data;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "INSERT INTO cpg_plugins (name, enabled, path, priority) VALUES ('Fixture Plugin', 0, 'fixture_plugin', 1);"
           assert_inspect_blocked installed-plugin 'Coppermine plugin "Fixture Plugin" at "fixture_plugin" is installed (disabled); plugin-owned files/tables/configuration must be audited or explicitly waived before core migration.'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
@@ -538,6 +544,11 @@ jobs:
           php bin/console mediarama:import:coppermine:inspect | tee /tmp/coppermine-prefix-inspect.txt
           grep -F "Detected: 1.6.x-compatible" /tmp/coppermine-prefix-inspect.txt
           grep -F "pictures: 4" /tmp/coppermine-prefix-inspect.txt
+          grep -F "categorymap: 1" /tmp/coppermine-prefix-inspect.txt
+          grep -F "exif: 1" /tmp/coppermine-prefix-inspect.txt
+          grep -F "filetypes: 4" /tmp/coppermine-prefix-inspect.txt
+          grep -F "plugins: 0" /tmp/coppermine-prefix-inspect.txt
+          grep -F "banned: 0" /tmp/coppermine-prefix-inspect.txt
 
           php bin/console mediarama:import:coppermine
           php bin/console messenger:consume async --limit=4 --time-limit=30 --no-interaction -vv
@@ -600,6 +611,9 @@ jobs:
           php bin/console mediarama:import:coppermine:inspect | tee /tmp/coppermine17-inspect.txt
           grep -F "Detected: 1.7.x-compatible" /tmp/coppermine17-inspect.txt
           grep -F "pictures: 5" /tmp/coppermine17-inspect.txt
+          grep -F "categorymap: 1" /tmp/coppermine17-inspect.txt
+          grep -F "exif: 1" /tmp/coppermine17-inspect.txt
+          grep -F "filetypes: 4" /tmp/coppermine17-inspect.txt
 
           php bin/console mediarama:import:coppermine
           php bin/console messenger:consume async --limit=5 --time-limit=30 --no-interaction -vv

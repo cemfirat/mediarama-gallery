@@ -168,9 +168,16 @@ Decision: **do not import Coppermine plugin registry rows into Mediarama's futur
 
 Reason:
 
-Plugin name/path/enabled/priority describe the Coppermine runtime, not a portable Mediarama extension. More importantly, plugins may own their own tables/files/configuration. Therefore this is not a silent discard: any installed plugin currently blocks migration until that plugin and its persisted data are audited or explicitly waived.
+Plugin name/path/enabled/priority describe the Coppermine runtime, not a portable Mediarama extension. More importantly, plugins may own their own tables/files/configuration.
 
-Preserved meaning: plugin-owned business data only after case-by-case audit; the legacy registry itself is not target runtime state.
+Therefore this is not a silent discard:
+
+- any installed plugin row blocks migration;
+- any database table using the configured Coppermine prefix that is not part of the audited 1.6/1.7 core schema also blocks migration, covering orphaned plugin/custom tables whose registry entry has disappeared.
+
+Those checks cannot prove that an extension never stored data under another prefix or outside the database, so a real-installation migration still requires an operator review of extension/customization history.
+
+Preserved meaning: plugin/custom business data only after case-by-case audit; the legacy registry itself is not target runtime state.
 
 ## 12. Derived Coppermine EXIF cache
 
