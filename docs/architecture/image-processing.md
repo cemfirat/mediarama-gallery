@@ -88,7 +88,7 @@ Production deployments should also install a restrictive ImageMagick `policy.xml
 
 The defaults are deliberately finite but are deployment settings rather than universal hardware recommendations. Operators may tighten them for smaller workers or raise them after measurement for unusually large professional images. Width/height, disk and elapsed-time limits must remain finite for Internet-facing installations.
 
-CI exercises the actual ImageMagick binaries with a valid image and with an image that exceeds a deliberately small width limit. The oversized image must fail through both the identify and conversion paths.
+CI runs `tests/Integration/ImageMagick/resource-limits.php` against the actual ImageMagick binaries. It verifies a valid image, an oversized-dimension image, a deliberately truncated image, a highly compressed decode-stress image under tight cache limits, and the invariant that a failed conversion never becomes a persisted derivative.
 
 References:
 
