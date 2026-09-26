@@ -100,6 +100,9 @@ jobs:
       - name: Lint PHP
         run: find src tests migrations -name '*.php' -print0 | xargs -0 -n1 php -l
 
+      - name: Validate real-gallery evidence runner syntax
+        run: bash -n bin/validate-coppermine-real
+
       - name: Validate YAML syntax without booting the application
         run: |
           php -r '
