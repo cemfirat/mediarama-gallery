@@ -126,6 +126,27 @@ login_status() {
     curl --silent --show-error         --cookie "$jar"         --cookie-jar "$jar"         --output /tmp/auth-login-post-body.html         --write-out '%{http_code}'         --data-urlencode "_username=$username"         --data-urlencode "_password=$password"         --data-urlencode "_csrf_token=$token"         "$BASE_URL/login"
 }
 
+api_csrf_token() {
+    local jar="$1"
+    local output="$2"
+
+    curl --fail --silent --show-error \
+        --cookie "$jar" \
+        --cookie-jar "$jar" \
+        "$BASE_URL/api/auth/csrf" \
+        -o "$output"
+
+    php -r '
+      $decoded = json_decode((string) file_get_contents($argv[1]), true, flags: JSON_THROW_ON_ERROR);
+      $token = $decoded["upload_token"] ?? null;
+      if (!is_string($token) || $token === "") {
+          fwrite(STDERR, "Upload CSRF token missing from authenticated response.\n");
+          exit(1);
+      }
+      echo $token;
+    ' "$output"
+}
+
 ANON_STATUS="$(upload_status)"
 expect_status 401 "$ANON_STATUS" "anonymous upload create is rejected"
 
@@ -146,6 +167,8 @@ expect_status 401 "$(anonymous_endpoint_status PUT "/api/uploads/$PROTECTED_ID/c
 expect_status 401 "$(anonymous_endpoint_status POST "/api/uploads/$PROTECTED_ID/complete")" "anonymous upload complete is rejected"
 expect_status 401 "$(anonymous_endpoint_status POST "/api/uploads/$PROTECTED_ID/finalize")" "anonymous upload finalize is rejected"
 
+expect_status 401 "$(anonymous_endpoint_status GET "/api/auth/csrf")" "anonymous API CSRF token request is rejected"
+
 FORGED_STATUS="$(upload_status "" "X-Mediarama-User: $ACTIVE_ID")"
 expect_status 401 "$FORGED_STATUS" "forged development actor header is ignored in prod"
 
@@ -160,7 +183,9 @@ ACTIVE_JAR=/tmp/auth-active.cookies
 rm -f "$ACTIVE_JAR"
 ACTIVE_TOKEN="$(csrf_token "$ACTIVE_JAR" /tmp/auth-active-login.html)"
 expect_status 302 "$(login_status auth-ci-active "$PASSWORD" "$ACTIVE_JAR" "$ACTIVE_TOKEN")" "active user login redirects after success"
-expect_status 201 "$(upload_status "$ACTIVE_JAR")" "authenticated active user can create upload session"
+UPLOAD_CSRF="$(api_csrf_token "$ACTIVE_JAR" /tmp/auth-upload-csrf.json)"
+expect_status 403 "$(upload_status "$ACTIVE_JAR")" "authenticated upload without CSRF token is rejected"
+expect_status 201 "$(upload_status "$ACTIVE_JAR" "X-CSRF-Token: $UPLOAD_CSRF")" "authenticated active user can create upload session with CSRF token"
 
 UPLOAD_ID="$(php -r '
   $decoded = json_decode((string) file_get_contents("/tmp/auth-upload-body.json"), true, flags: JSON_THROW_ON_ERROR);
@@ -218,6 +243,7 @@ done
 rm -f "$ACTIVE_JAR"
 ACTIVE_TOKEN="$(csrf_token "$ACTIVE_JAR" /tmp/auth-active-login-2.html)"
 expect_status 302 "$(login_status auth-ci-active "$PASSWORD" "$ACTIVE_JAR" "$ACTIVE_TOKEN")" "active user can establish a fresh session"
+ACTIVE_UPLOAD_CSRF="$(api_csrf_token "$ACTIVE_JAR" /tmp/auth-upload-csrf-2.json)"
 
 ACTIVE_ID="$ACTIVE_ID" php <<'PHP'
 <?php
@@ -239,7 +265,7 @@ $db->executeStatement(
 );
 PHP
 
-expect_status 401 "$(upload_status "$ACTIVE_JAR")" "session is invalidated after password changes"
+expect_status 401 "$(upload_status "$ACTIVE_JAR" "X-CSRF-Token: $ACTIVE_UPLOAD_CSRF")" "session is invalidated after password changes"
 
 ACTIVE_ID="$ACTIVE_ID" php <<'PHP'
 <?php
@@ -268,6 +294,7 @@ PHP
 rm -f "$ACTIVE_JAR"
 ACTIVE_TOKEN="$(csrf_token "$ACTIVE_JAR" /tmp/auth-active-login-3.html)"
 expect_status 302 "$(login_status auth-ci-active "$PASSWORD" "$ACTIVE_JAR" "$ACTIVE_TOKEN")" "active user can establish a session after password reset"
+ACTIVE_UPLOAD_CSRF="$(api_csrf_token "$ACTIVE_JAR" /tmp/auth-upload-csrf-3.json)"
 
 ACTIVE_ID="$ACTIVE_ID" php <<'PHP'
 <?php
@@ -284,7 +311,7 @@ $db->executeStatement(
 );
 PHP
 
-expect_status 401 "$(upload_status "$ACTIVE_JAR")" "session is invalidated after account status changes"
+expect_status 401 "$(upload_status "$ACTIVE_JAR" "X-CSRF-Token: $ACTIVE_UPLOAD_CSRF")" "session is invalidated after account status changes"
 
 php <<'PHP'
 <?php

@@ -50,6 +50,15 @@ Login uses Symfony form-login CSRF validation.
 
 Logout also has CSRF validation enabled. Templates generate the firewall-aware logout URL through Symfony's `logout_path()` helper.
 
+Unsafe session-authenticated upload API requests require a second CSRF boundary:
+
+1. the authenticated client requests `GET /api/auth/csrf`;
+2. the response returns a session-bound `upload_token`;
+3. `POST`/`PUT` requests under `/api/uploads` send it as `X-CSRF-Token`;
+4. a missing or invalid token is rejected with JSON HTTP 403 before the upload controller runs.
+
+The token endpoint itself requires `ROLE_USER` in production, is non-cacheable and is not indexable.
+
 ## HTTP behavior
 
 - `/login` is public and non-indexable.
@@ -68,11 +77,14 @@ Logout also has CSRF validation enabled. Templates generate the firewall-aware l
 
 CI starts the actual application with `APP_ENV=prod` against PostgreSQL and verifies:
 
-- anonymous upload API request -> 401
+- anonymous create/status/chunk/complete/finalize upload routes -> 401
 - forged `X-Mediarama-User` in production -> 401
 - login without CSRF does not establish an authenticated session
 - active username/password login establishes a session
+- authenticated upload without the API CSRF token -> 403
+- authenticated upload with the API CSRF token succeeds
 - authenticated upload session is owned by the logged-in Mediarama user
 - inactive and `password_reset_required` identities cannot authenticate
 - CSRF-protected logout invalidates the session
+- changing an authenticated password invalidates the existing session
 - changing an authenticated account from active to inactive invalidates further authenticated API access
