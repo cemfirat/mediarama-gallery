@@ -164,6 +164,46 @@ jobs:
           }
           PHP
 
+      - name: Verify Coppermine migration preflight blockers
+        run: |
+          assert_inspect_blocked() {
+            label="$1"
+            expected="$2"
+            output="/tmp/coppermine-preflight-${label}.txt"
+
+            set +e
+            php bin/console mediarama:import:coppermine:inspect >"$output" 2>&1
+            status=$?
+            set -e
+
+            cat "$output"
+
+            if [ "$status" -eq 0 ]; then
+              echo "Expected preflight inspection to fail for: $label"
+              exit 1
+            fi
+
+            grep -F "$expected" "$output"
+          }
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "INSERT INTO cpg_users (user_id, user_group, user_active, user_name, user_lastvisit, user_regdate, user_email, user_profile6) VALUES (2, 3, 'YES', 'duplicate-user', '2024-02-02 10:00:00', '2024-01-02 10:00:00', 'fixture@example.test', '');"
+          assert_inspect_blocked duplicate-email 'Duplicate normalized email address "fixture@example.test" is used by 2 source users'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "DELETE FROM cpg_users WHERE user_id = 2;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '1' WHERE name = 'bridge_enable';"
+          assert_inspect_blocked bridge-enabled 'Coppermine bridging is enabled'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '0' WHERE name = 'bridge_enable';"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_albums SET moderator_group = 3 WHERE aid = 10;"
+          assert_inspect_blocked moderator-group 'Album 10 has legacy moderator_group=3'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_albums SET moderator_group = 0 WHERE aid = 10;"
+
       - name: Verify Coppermine 1.7 capability detection
         run: |
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \

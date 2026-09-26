@@ -12,6 +12,7 @@ final readonly class CoppermineMigrationRunner
     public function __construct(
         private Connection $target,
         private CoppermineSchemaInspector $inspector,
+        private CoppermineMigrationPreflight $preflight,
         private CoppermineIdentityImporter $identity,
         private CoppermineCollectionImporter $collections,
         private CoppermineMediaImporter $media,
@@ -54,6 +55,14 @@ SQL,
             if ($inspection->warnings !== []) {
                 throw new \RuntimeException(
                     'Coppermine source inspection failed: '.implode(' ', $inspection->warnings),
+                );
+            }
+
+            $this->stage($runId, 'preflight');
+            $preflight = $this->preflight->inspect();
+            if (!$preflight->isClean()) {
+                throw new \RuntimeException(
+                    'Coppermine migration preflight blocked: '.implode(' ', $preflight->blockers),
                 );
             }
 
