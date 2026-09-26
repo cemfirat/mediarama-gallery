@@ -407,3 +407,6 @@ jobs:
               }
           }
           PHP
+
+      - name: Verify large Coppermine batching and resume
+        run: bash tests/Integration/Coppermine/large-resume.sh
