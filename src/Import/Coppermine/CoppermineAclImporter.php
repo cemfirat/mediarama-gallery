@@ -68,7 +68,7 @@ SQL,
 
             $ownerId = $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner']);
             if ($ownerId !== null) {
-                $rules += $this->rememberRule($collectionId, $ownerId, null);
+                $rules += $this->rememberRule($collectionId, $ownerId, null, 'collection.view');
             }
 
             $visibility = (int) $row['visibility'];
@@ -94,7 +94,7 @@ SQL,
                     continue;
                 }
 
-                $rules += $this->rememberRule($collectionId, $userId, null);
+                $rules += $this->rememberRule($collectionId, $userId, null, 'collection.view');
                 continue;
             }
 
@@ -104,20 +104,71 @@ SQL,
                 continue;
             }
 
-            $rules += $this->rememberRule($collectionId, null, $groupId);
+            $rules += $this->rememberRule($collectionId, null, $groupId, 'collection.view');
         }
 
-        return new CoppermineAclImportReport(count($rows), $rules, $unmapped, $passwordReset);
+        $categoryCreationRules = $this->importCategoryCreationRules($source, $unmapped);
+
+        return new CoppermineAclImportReport(
+            count($rows),
+            $rules,
+            $categoryCreationRules,
+            array_values(array_unique($unmapped)),
+            $passwordReset,
+        );
     }
 
-    private function rememberRule(Uuid $collectionId, ?Uuid $userId, ?Uuid $groupId): int
+    /** @param list<string> $unmapped */
+    private function importCategoryCreationRules(Connection $source, array &$unmapped): int
+    {
+        $tableName = $this->prefix->table('categorymap');
+
+        if (!in_array($tableName, $source->createSchemaManager()->listTableNames(), true)) {
+            return 0;
+        }
+
+        $table = $source->quoteIdentifier($tableName);
+        $rows = $source->fetchAllAssociative(
+            'SELECT cid, group_id FROM '.$table.' ORDER BY cid ASC, group_id ASC',
+        );
+
+        $rules = 0;
+
+        foreach ($rows as $row) {
+            $sourceCategoryId = (string) $row['cid'];
+            $sourceGroupId = (string) $row['group_id'];
+
+            $collectionId = $this->mappings->findTargetId('coppermine', 'category', $sourceCategoryId);
+            $groupId = $this->mappings->findTargetId('coppermine', 'group', $sourceGroupId);
+
+            if ($collectionId === null || $groupId === null) {
+                $unmapped[] = sprintf(
+                    'categorymap category:%s group:%s',
+                    $sourceCategoryId,
+                    $sourceGroupId,
+                );
+                continue;
+            }
+
+            $rules += $this->rememberRule(
+                $collectionId,
+                null,
+                $groupId,
+                'collection.create_child',
+            );
+        }
+
+        return $rules;
+    }
+
+    private function rememberRule(Uuid $collectionId, ?Uuid $userId, ?Uuid $groupId, string $capability): int
     {
         return $this->target->executeStatement(
             <<<'SQL'
 INSERT INTO collection_access (
     id, collection_id, user_id, group_id, capability, effect, created_at
 ) VALUES (
-    :id, :collection_id, :user_id, :group_id, 'collection.view', 'allow', NOW()
+    :id, :collection_id, :user_id, :group_id, :capability, 'allow', NOW()
 )
 ON CONFLICT DO NOTHING
 SQL,
@@ -126,6 +177,7 @@ SQL,
                 'collection_id' => $collectionId->toRfc4122(),
                 'user_id' => $userId?->toRfc4122(),
                 'group_id' => $groupId?->toRfc4122(),
+                'capability' => $capability,
             ],
         );
     }
