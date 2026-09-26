@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   php:
@@ -106,48 +106,20 @@ jobs:
 
       - name: Build UIkit frontend
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
           test -s public/build/app.css
           test -s public/build/uikit.min.js
           test -s public/build/uikit-icons.min.js
 
-      - name: Capture generated dependency lockfiles
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-dependency-lockfiles
-          if-no-files-found: error
-          path: |
-            composer.lock
-            symfony.lock
-            package-lock.json
-
-      - name: Commit verified generated dependency lockfiles
-        if: github.event.pull_request.head.repo.full_name == github.repository
+      - name: Verify dependency install is reproducible
         run: |
-          printf '%s  %s\n'             '950d83474a2b8bd4d1b8e48c665c8dbf6667bba41d142a30a15b7e7a74580dbe' composer.lock             '9abf8b74153dd2bc8c9ee7dbd176802cff8432194dc08baa2dd88b70920b5782' symfony.lock             'fb04ffba06d247e6bcad67f593868ce3c6b61c01375c7bd80554bcc94857ae03' package-lock.json             | sha256sum --check --strict
-
-          cp composer.lock /tmp/mediarama-composer.lock
-          cp symfony.lock /tmp/mediarama-symfony.lock
-          cp package-lock.json /tmp/mediarama-package-lock.json
-
-          git fetch origin build/reproducible-dependency-locks
-          git checkout -B build/reproducible-dependency-locks origin/build/reproducible-dependency-locks
-
-          cp /tmp/mediarama-composer.lock composer.lock
-          cp /tmp/mediarama-symfony.lock symfony.lock
-          cp /tmp/mediarama-package-lock.json package-lock.json
-
-          git add composer.lock symfony.lock package-lock.json
-          if git diff --cached --quiet; then
-            echo "Verified dependency lockfiles are already committed."
-            exit 0
+          STATUS="$(git status --porcelain -- composer.lock symfony.lock package-lock.json package.json .env config)"
+          if [ -n "$STATUS" ]; then
+            echo "Dependency installation changed committed project state:"
+            printf '%s\n' "$STATUS"
+            exit 1
           fi
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'build: lock PHP Symfony and frontend dependencies'
-          git push origin HEAD:build/reproducible-dependency-locks
 
       - name: Lint PHP
         run: find src tests migrations -name '*.php' -print0 | xargs -0 -n1 php -l
