@@ -232,6 +232,58 @@ jobs:
           assert_inspect_blocked corrupt-image 'Picture 100 source media is not importable: Unable to inspect image geometry:'
           mv /tmp/coppermine-albums/userpics/sample.jpg.good /tmp/coppermine-albums/userpics/sample.jpg
 
+      - name: Verify unusual Coppermine prefix and configuration
+        run: |
+          php -r '
+          $pdo = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=postgres", "mediarama", "mediarama", [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+          $pdo->exec("DROP DATABASE IF EXISTS mediarama_prefix");
+          $pdo->exec("CREATE DATABASE mediarama_prefix");
+          '
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "DROP DATABASE IF EXISTS coppermine_prefix; CREATE DATABASE coppermine_prefix CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          sed 's/cpg_/odd42__/g' tests/Fixtures/Coppermine/1.6-minimal.sql             | mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine_prefix
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine_prefix             -e "UPDATE odd42__config SET value = '|' WHERE name = 'keyword_separator'; UPDATE odd42__config SET value = '10' WHERE name = 'rating_stars_amount'; UPDATE odd42__pictures SET keywords = 'summer|vacation' WHERE pid = 100; UPDATE odd42__vote_stats SET rating = 8 WHERE sid = 300;"
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "GRANT SELECT ON coppermine_prefix.* TO 'readonly'@'%'; FLUSH PRIVILEGES;"
+
+          export DATABASE_URL="postgresql://mediarama:mediarama@127.0.0.1:5432/mediarama_prefix?serverVersion=18&charset=utf8"
+          export MEDIA_STORAGE_PATH="/tmp/mediarama-prefix-media"
+          export COPPERMINE_DATABASE_URL="mysql://readonly:readonly@127.0.0.1:3306/coppermine_prefix"
+          export COPPERMINE_TABLE_PREFIX="odd42__"
+
+          php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          php bin/console mediarama:import:coppermine:inspect | tee /tmp/coppermine-prefix-inspect.txt
+          grep -F "Detected: 1.6.x-compatible" /tmp/coppermine-prefix-inspect.txt
+          grep -F "pictures: 4" /tmp/coppermine-prefix-inspect.txt
+
+          php bin/console mediarama:import:coppermine
+          php bin/console messenger:consume async --limit=4 --time-limit=30 --no-interaction -vv
+
+          php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+
+          $dsn = new Doctrine\DBAL\Tools\DsnParser([
+              'postgresql' => 'pdo_pgsql',
+              'postgres' => 'pdo_pgsql',
+          ]);
+          $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
+          $checks = [
+              'completed prefixed import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'completed'") === 1,
+              'prefixed media' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 4,
+              'custom keyword separator' => (int) $db->fetchOne("SELECT COUNT(*) FROM tags WHERE slug IN ('summer', 'vacation')") === 2,
+              'custom keyword links' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_tags mt JOIN media_assets m ON m.id = mt.media_id JOIN tags t ON t.id = mt.tag_id WHERE m.original_filename = 'sample.jpg' AND t.slug IN ('summer', 'vacation')") === 2,
+              'ten-star rating normalization' => (int) $db->fetchOne('SELECT COUNT(*) FROM ratings WHERE value = 4') === 1,
+              'prefixed async queue drained' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,
+          ];
+
+          foreach ($checks as $name => $ok) {
+              echo ($ok ? 'OK ' : 'FAIL ').$name.PHP_EOL;
+              if (!$ok) {
+                  exit(1);
+              }
+          }
+          PHP
+
       - name: Verify Coppermine 1.7 capability detection
         run: |
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
