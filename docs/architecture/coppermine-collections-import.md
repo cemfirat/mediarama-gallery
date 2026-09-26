@@ -30,6 +30,8 @@ Each imported source row gets a stable source→target UUID mapping. Rerunning t
 
 After category creation is complete, a reconciliation pass resolves parent-category relationships.
 
+Before any migration writes begin, preflight rejects category rows whose non-zero parent does not exist and rejects category cycles. The reconciliation pass also fails if a child or parent mapping is unexpectedly missing, so hierarchy corruption cannot silently flatten a category.
+
 
 ## Virtual user galleries
 

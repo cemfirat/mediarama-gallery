@@ -171,8 +171,19 @@ SQL,
             $child = $this->mappings->findTargetId('coppermine', 'category', (string) $row['cid']);
             $parent = $this->mappings->findTargetId('coppermine', 'category', (string) $row['parent']);
 
-            if ($child === null || $parent === null) {
-                continue;
+            if ($child === null) {
+                throw new \RuntimeException(sprintf(
+                    'Coppermine category %s has not been imported before parent reconciliation.',
+                    (string) $row['cid'],
+                ));
+            }
+
+            if ($parent === null) {
+                throw new \RuntimeException(sprintf(
+                    'Coppermine category %s references parent %s which has not been imported.',
+                    (string) $row['cid'],
+                    (string) $row['parent'],
+                ));
             }
 
             $this->target->update(

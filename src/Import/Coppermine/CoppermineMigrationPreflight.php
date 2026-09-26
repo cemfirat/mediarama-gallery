@@ -29,6 +29,7 @@ final readonly class CoppermineMigrationPreflight
             $this->duplicateEmailBlockers($source),
             $this->bridgeBlockers($source),
             $this->moderatorGroupBlockers($source),
+            $this->categoryHierarchyBlockers($source),
             $this->sourceMediaBlockers($source),
         );
 
@@ -140,6 +141,86 @@ SQL,
                 (string) $row['aid'],
                 (int) $row['moderator_group'],
             );
+        }
+
+        return $blockers;
+    }
+
+
+    /** @return list<string> */
+    private function categoryHierarchyBlockers(Connection $source): array
+    {
+        $table = $source->quoteIdentifier($this->prefix->table('categories'));
+        $rows = $source->fetchAllAssociative(
+            'SELECT cid, parent FROM '.$table.' ORDER BY cid ASC',
+        );
+
+        /** @var array<int, int> $parents */
+        $parents = [];
+        foreach ($rows as $row) {
+            $parents[(int) $row['cid']] = (int) $row['parent'];
+        }
+
+        $blockers = [];
+
+        foreach ($parents as $cid => $parent) {
+            if ($parent <= 0) {
+                continue;
+            }
+
+            if (!array_key_exists($parent, $parents)) {
+                $blockers[] = sprintf(
+                    'Category %d references missing parent category %d; hierarchy cannot be migrated safely.',
+                    $cid,
+                    $parent,
+                );
+
+                if (count($blockers) >= self::DETAIL_LIMIT) {
+                    return $blockers;
+                }
+            }
+        }
+
+        $reportedCycles = [];
+
+        foreach (array_keys($parents) as $start) {
+            $path = [];
+            $positions = [];
+            $current = $start;
+
+            while (array_key_exists($current, $parents) && $parents[$current] > 0) {
+                if (array_key_exists($current, $positions)) {
+                    $cycle = array_slice($path, $positions[$current]);
+                    $canonical = $cycle;
+                    sort($canonical, SORT_NUMERIC);
+                    $cycleKey = implode(',', $canonical);
+
+                    if (!isset($reportedCycles[$cycleKey])) {
+                        $reportedCycles[$cycleKey] = true;
+                        $cycle[] = $current;
+                        $blockers[] = sprintf(
+                            'Category hierarchy contains a cycle: %s.',
+                            implode(' -> ', $cycle),
+                        );
+
+                        if (count($blockers) >= self::DETAIL_LIMIT) {
+                            return $blockers;
+                        }
+                    }
+
+                    break;
+                }
+
+                $positions[$current] = count($path);
+                $path[] = $current;
+
+                $parent = $parents[$current];
+                if (!array_key_exists($parent, $parents)) {
+                    break;
+                }
+
+                $current = $parent;
+            }
         }
 
         return $blockers;

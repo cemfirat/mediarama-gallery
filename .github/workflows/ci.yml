@@ -281,6 +281,18 @@ jobs:
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_albums SET moderator_group = 0 WHERE aid = 10;"
 
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_categories SET parent = 999 WHERE cid = 3;"
+          assert_inspect_blocked orphan-category-parent 'Category 3 references missing parent category 999; hierarchy cannot be migrated safely.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_categories SET parent = 2 WHERE cid = 3;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_categories SET parent = 3 WHERE cid = 2;"
+          assert_inspect_blocked category-cycle 'Category hierarchy contains a cycle: 2 -> 3 -> 2.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_categories SET parent = 0 WHERE cid = 2;"
+
           mv /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine-albums/userpics/sample.jpg.missing
           assert_inspect_blocked missing-original 'Picture 100 original file is missing or unreadable.'
           mv /tmp/coppermine-albums/userpics/sample.jpg.missing /tmp/coppermine-albums/userpics/sample.jpg
