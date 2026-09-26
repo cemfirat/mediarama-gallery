@@ -260,6 +260,7 @@ VALUES (1, 'YToxOntpOjA7aToxMDA7fQ==');
 
 INSERT INTO cpg_config (name, value) VALUES
   ('bridge_enable', '0'),
+  ('allow_private_albums', '1'),
   ('keyword_separator', ';'),
   ('old_style_rating', '0'),
   ('rating_stars_amount', '5');

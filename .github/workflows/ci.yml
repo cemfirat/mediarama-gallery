@@ -276,6 +276,12 @@ jobs:
             -e "UPDATE cpg_config SET value = '0' WHERE name = 'bridge_enable';"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '0' WHERE name = 'allow_private_albums';"
+          assert_inspect_blocked private-albums-disabled 'Album 10 retains private access metadata (visibility=3, password-protected) while allow_private_albums=0 made Coppermine treat private-album enforcement as disabled; an explicit target visibility decision is required.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '1' WHERE name = 'allow_private_albums';"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_albums SET moderator_group = 3 WHERE aid = 10;"
           assert_inspect_blocked moderator-group 'Album 10 has legacy moderator_group=3'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \

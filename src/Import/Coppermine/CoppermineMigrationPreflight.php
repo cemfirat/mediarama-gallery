@@ -28,6 +28,7 @@ final readonly class CoppermineMigrationPreflight
         $blockers = array_merge(
             $this->duplicateEmailBlockers($source),
             $this->bridgeBlockers($source),
+            $this->privateAlbumConfigurationBlockers($source),
             $this->moderatorGroupBlockers($source),
             $this->categoryHierarchyBlockers($source),
             $this->sourceMediaBlockers($source),
@@ -111,6 +112,65 @@ SQL,
             'Coppermine bridging is enabled%s; the local users table cannot be assumed to be the authoritative identity source.',
             $bridgeName !== null ? sprintf(' for "%s"', $bridgeName) : '',
         )];
+    }
+
+
+    /** @return list<string> */
+    private function privateAlbumConfigurationBlockers(Connection $source): array
+    {
+        $configTable = $source->quoteIdentifier($this->prefix->table('config'));
+        $rawValue = $source->fetchOne(
+            'SELECT value FROM '.$configTable.' WHERE name = :name',
+            ['name' => 'allow_private_albums'],
+        );
+
+        if ($rawValue === false) {
+            return ['Required Coppermine config key "allow_private_albums" is missing; effective album visibility cannot be determined safely.'];
+        }
+
+        $value = trim((string) $rawValue);
+        if ($value === '1') {
+            return [];
+        }
+
+        if ($value !== '0') {
+            return [sprintf(
+                'Coppermine config key "allow_private_albums" has unsupported value "%s"; expected 0 or 1.',
+                $value,
+            )];
+        }
+
+        $albums = $source->quoteIdentifier($this->prefix->table('albums'));
+        $rows = $source->fetchAllAssociative(sprintf(
+            <<<'SQL'
+SELECT aid, visibility, alb_password
+FROM %s
+WHERE visibility <> 0 OR TRIM(COALESCE(alb_password, '')) <> ''
+ORDER BY aid ASC
+LIMIT %d
+SQL,
+            $albums,
+            self::DETAIL_LIMIT,
+        ));
+
+        $blockers = [];
+        foreach ($rows as $row) {
+            $details = [];
+            if ((int) $row['visibility'] !== 0) {
+                $details[] = 'visibility='.(string) $row['visibility'];
+            }
+            if (trim((string) $row['alb_password']) !== '') {
+                $details[] = 'password-protected';
+            }
+
+            $blockers[] = sprintf(
+                'Album %s retains private access metadata (%s) while allow_private_albums=0 made Coppermine treat private-album enforcement as disabled; an explicit target visibility decision is required.',
+                (string) $row['aid'],
+                implode(', ', $details),
+            );
+        }
+
+        return $blockers;
     }
 
     /** @return list<string> */

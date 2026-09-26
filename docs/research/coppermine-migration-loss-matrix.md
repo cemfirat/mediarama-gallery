@@ -184,9 +184,11 @@ The existing ACL importer already follows this direction by requiring a password
 
 ### Global private-album switch
 
-`allow_private_albums` changes effective runtime behavior.
+`allow_private_albums` changes effective runtime behavior. Coppermine only builds/enforces the private-album forbidden set when this switch is enabled; its own administration text also warns that disabling the switch makes existing private albums visible.
 
-Migration must report the source value and should use fail-closed target rules rather than publishing non-zero visibility rows due to a source-global switch.
+Migration policy: **fail closed on conflicting stored intent**.
+
+Preflight now requires `allow_private_albums` to be present with value `0` or `1`. When it is `0`, migration is blocked if any album still carries non-zero `visibility` or an album password. That state has two competing truths — effective Coppermine behavior was public, while stored album metadata still expresses restricted intent — so Mediarama does not guess which one should win.
 
 ### Moderator-group residue
 
