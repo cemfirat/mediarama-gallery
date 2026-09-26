@@ -9,7 +9,7 @@ Status: foundation implementation
 3. `PUT /api/uploads/{id}/chunks/{index}` uploads each chunk.
 4. `GET /api/uploads/{id}` returns accepted chunks so an interrupted client can resume.
 5. `POST /api/uploads/{id}/complete` validates continuity and assembles the temporary object.
-6. `POST /api/uploads/{id}/finalize` re-authorizes the destination, detects actual content/MIME, computes SHA-256, promotes the immutable original, creates the MediaAsset and dispatches background processing.
+6. `POST /api/uploads/{id}/finalize` re-authorizes the destination, detects actual content/MIME, computes SHA-256, applies the upload allow policy, structurally validates the media with ImageMagick (images) or FFprobe (audio/video), and only then promotes the immutable original, creates the MediaAsset and dispatches background processing.
 
 ## Chunk headers
 
@@ -30,6 +30,19 @@ Completion verifies:
 - assembled byte count equals the session's expected asset size.
 
 Finalization then computes the full-file SHA-256 and detects MIME from file content.
+
+## Structural media validation
+
+MIME detection is not treated as decoder validation.
+
+After the MIME/type allow policy and expected-size check pass, Mediarama validates the temporary object before finalization begins:
+
+- images must decode far enough for the hardened ImageMagick geometry inspector to return valid dimensions;
+- audio must contain an audio stream recognized by FFprobe;
+- video must contain a video stream recognized by FFprobe.
+
+FFprobe runs through an argv-only process with a parent timeout plus bounded probe size and analyze duration. A structural validation failure leaves the upload session in `uploaded`, keeps the temporary object retryable, and prevents immutable-original promotion, `MediaAsset` creation and background dispatch.
+
 
 ## Resume
 
