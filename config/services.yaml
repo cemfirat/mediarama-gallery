@@ -164,6 +164,9 @@ services:
     Mediarama\Media\Application\MediaSearch:
         alias: Mediarama\Media\Infrastructure\Persistence\DbalMediaSearch
 
+    Mediarama\Media\Application\PublicMediaSearch:
+        alias: Mediarama\Media\Infrastructure\Persistence\DbalPublicMediaSearch
+
 
     Mediarama\Security\Application\CurrentUser:
         alias: Mediarama\Security\Infrastructure\Http\RequestCurrentUser
@@ -192,3 +195,7 @@ services:
     Mediarama\Import\Coppermine\CoppermineFileLocator:
         arguments:
             $albumsRoot: '%env(COPPERMINE_ALBUMS_ROOT)%'
+
+
+    Mediarama\Collection\Application\PublicGalleryQuery:
+        alias: Mediarama\Collection\Infrastructure\Persistence\DbalPublicGalleryQuery
