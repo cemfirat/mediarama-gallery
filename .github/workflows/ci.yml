@@ -138,6 +138,9 @@ jobs:
       - name: Run unit tests
         run: vendor/bin/phpunit
 
+      - name: Verify concurrent upload finalization and crash recovery
+        run: php tests/Integration/Upload/finalize-concurrency.php
+
       - name: Prepare Coppermine 1.6 fixture
         run: |
           mkdir -p /tmp/coppermine-albums/userpics
