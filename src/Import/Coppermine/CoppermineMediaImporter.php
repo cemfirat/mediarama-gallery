@@ -22,6 +22,7 @@ final readonly class CoppermineMediaImporter
         private Connection $target,
         private ImportMappingRepository $mappings,
         private ImportCheckpointRepository $checkpoints,
+        private CoppermineSourceKey $sourceKey,
         private CoppermineTablePrefix $prefix,
         private CoppermineFileLocator $files,
         private MediaStorage $storage,
@@ -34,7 +35,7 @@ final readonly class CoppermineMediaImporter
     public function importBatch(int $batchSize = 50): CoppermineMediaImportReport
     {
         $source = $this->sourceFactory->create();
-        $cursor = (int) ($this->checkpoints->get('coppermine', 'pictures') ?? '0');
+        $cursor = (int) ($this->checkpoints->get($this->sourceKey->value(), 'pictures') ?? '0');
         $table = $source->quoteIdentifier($this->prefix->table('pictures'));
 
         $rows = $source->fetchAllAssociative(
@@ -56,7 +57,7 @@ final readonly class CoppermineMediaImporter
             $targetPersisted = false;
 
             try {
-                $existing = $this->mappings->findTargetId('coppermine', 'picture', $sourceId);
+                $existing = $this->mappings->findTargetId($this->sourceKey->value(), 'picture', $sourceId);
                 if ($existing !== null) {
                     $state = $this->target->fetchOne(
                         'SELECT processing_state FROM media_assets WHERE id = :id',
@@ -78,11 +79,11 @@ final readonly class CoppermineMediaImporter
                     }
 
                     ++$skipped;
-                    $this->checkpoints->save('coppermine', 'pictures', $sourceId);
+                    $this->checkpoints->save($this->sourceKey->value(), 'pictures', $sourceId);
                     continue;
                 }
 
-                $collectionId = $this->mappings->findTargetId('coppermine', 'album', (string) $row['aid']);
+                $collectionId = $this->mappings->findTargetId($this->sourceKey->value(), 'album', (string) $row['aid']);
                 if ($collectionId === null) {
                     throw new \RuntimeException(sprintf('Album %s has not been imported.', $row['aid']));
                 }
@@ -110,7 +111,7 @@ final readonly class CoppermineMediaImporter
                 $this->contentPolicy->assertAllowed($inspection);
 
                 $ownerId = (int) $row['owner_id'] > 0
-                    ? $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner_id'])
+                    ? $this->mappings->findTargetId($this->sourceKey->value(), 'user', (string) $row['owner_id'])
                     : null;
 
                 $mediaType = $inspection->mediaType->value;
@@ -169,12 +170,12 @@ SQL,
                         ],
                     );
 
-                    $this->mappings->remember('coppermine', 'picture', $sourceId, $mediaId);
+                    $this->mappings->remember($this->sourceKey->value(), 'picture', $sourceId, $mediaId);
                 });
                 $targetPersisted = true;
 
                 $this->bus->dispatch(new ProcessMedia($mediaId->toRfc4122()));
-                $this->checkpoints->save('coppermine', 'pictures', $sourceId);
+                $this->checkpoints->save($this->sourceKey->value(), 'pictures', $sourceId);
                 ++$imported;
             } catch (\Throwable $e) {
                 if ($objectId instanceof StorageObjectId && !$targetPersisted && $this->storage->exists($objectId)) {

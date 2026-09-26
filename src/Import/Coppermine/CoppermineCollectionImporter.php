@@ -18,6 +18,7 @@ final readonly class CoppermineCollectionImporter
         private Connection $target,
         private ImportMappingRepository $mappings,
         private ImportCheckpointRepository $checkpoints,
+        private CoppermineSourceKey $sourceKey,
         private CoppermineTablePrefix $prefix,
     ) {
     }
@@ -25,7 +26,7 @@ final readonly class CoppermineCollectionImporter
     public function importCategories(int $batchSize = 100): int
     {
         $source = $this->sourceFactory->create();
-        $cursor = (int) ($this->checkpoints->get('coppermine', 'categories') ?? '0');
+        $cursor = (int) ($this->checkpoints->get($this->sourceKey->value(), 'categories') ?? '0');
         $table = $source->quoteIdentifier($this->prefix->table('categories'));
 
         $rows = $source->fetchAllAssociative(
@@ -39,11 +40,11 @@ final readonly class CoppermineCollectionImporter
 
         foreach ($rows as $row) {
             $sourceId = (string) $row['cid'];
-            $targetId = $this->mappings->findTargetId('coppermine', 'category', $sourceId) ?? Uuid::v7();
+            $targetId = $this->mappings->findTargetId($this->sourceKey->value(), 'category', $sourceId) ?? Uuid::v7();
 
             $ownerId = null;
             if ((int) $row['owner_id'] > 0) {
-                $ownerId = $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner_id']);
+                $ownerId = $this->mappings->findTargetId($this->sourceKey->value(), 'user', (string) $row['owner_id']);
             }
 
             $this->target->executeStatement(
@@ -71,8 +72,8 @@ SQL,
                 ],
             );
 
-            $this->mappings->remember('coppermine', 'category', $sourceId, $targetId);
-            $this->checkpoints->save('coppermine', 'categories', $sourceId);
+            $this->mappings->remember($this->sourceKey->value(), 'category', $sourceId, $targetId);
+            $this->checkpoints->save($this->sourceKey->value(), 'categories', $sourceId);
         }
 
         if (count($rows) < $batchSize) {
@@ -85,7 +86,7 @@ SQL,
     public function importAlbums(int $batchSize = 100): int
     {
         $source = $this->sourceFactory->create();
-        $cursor = (int) ($this->checkpoints->get('coppermine', 'albums') ?? '0');
+        $cursor = (int) ($this->checkpoints->get($this->sourceKey->value(), 'albums') ?? '0');
         $table = $source->quoteIdentifier($this->prefix->table('albums'));
 
         $rows = $source->fetchAllAssociative(
@@ -99,13 +100,13 @@ SQL,
 
         foreach ($rows as $row) {
             $sourceId = (string) $row['aid'];
-            $targetId = $this->mappings->findTargetId('coppermine', 'album', $sourceId) ?? Uuid::v7();
-            $ownerId = $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner']);
+            $targetId = $this->mappings->findTargetId($this->sourceKey->value(), 'album', $sourceId) ?? Uuid::v7();
+            $ownerId = $this->mappings->findTargetId($this->sourceKey->value(), 'user', (string) $row['owner']);
             $categoryId = (int) $row['category'];
             $parentId = null;
 
             if ($categoryId > 0 && $categoryId < self::FIRST_USER_CAT) {
-                $parentId = $this->mappings->findTargetId('coppermine', 'category', (string) $categoryId);
+                $parentId = $this->mappings->findTargetId($this->sourceKey->value(), 'category', (string) $categoryId);
                 if ($parentId === null) {
                     throw new \RuntimeException(sprintf(
                         'Coppermine album %s references category %d which has not been imported.',
@@ -154,8 +155,8 @@ SQL,
                 ],
             );
 
-            $this->mappings->remember('coppermine', 'album', $sourceId, $targetId);
-            $this->checkpoints->save('coppermine', 'albums', $sourceId);
+            $this->mappings->remember($this->sourceKey->value(), 'album', $sourceId, $targetId);
+            $this->checkpoints->save($this->sourceKey->value(), 'albums', $sourceId);
         }
 
         return count($rows);
@@ -185,7 +186,7 @@ SQL,
                 $sourceId = (string) $row['source_id'];
                 $pictureId = (string) $row['thumb'];
 
-                $collectionId = $this->mappings->findTargetId('coppermine', $spec['entity'], $sourceId);
+                $collectionId = $this->mappings->findTargetId($this->sourceKey->value(), $spec['entity'], $sourceId);
                 if ($collectionId === null) {
                     throw new \RuntimeException(sprintf(
                         'Coppermine %s %s has not been imported before cover reconciliation.',
@@ -194,7 +195,7 @@ SQL,
                     ));
                 }
 
-                $mediaId = $this->mappings->findTargetId('coppermine', 'picture', $pictureId);
+                $mediaId = $this->mappings->findTargetId($this->sourceKey->value(), 'picture', $pictureId);
                 if ($mediaId === null) {
                     throw new \RuntimeException(sprintf(
                         'Coppermine %s %s explicit thumbnail references picture %s which has not been imported.',
@@ -237,8 +238,8 @@ SQL,
         ));
 
         foreach ($rows as $row) {
-            $child = $this->mappings->findTargetId('coppermine', 'category', (string) $row['cid']);
-            $parent = $this->mappings->findTargetId('coppermine', 'category', (string) $row['parent']);
+            $child = $this->mappings->findTargetId($this->sourceKey->value(), 'category', (string) $row['cid']);
+            $parent = $this->mappings->findTargetId($this->sourceKey->value(), 'category', (string) $row['parent']);
 
             if ($child === null) {
                 throw new \RuntimeException(sprintf(

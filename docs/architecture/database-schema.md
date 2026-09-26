@@ -267,6 +267,7 @@ Parts need not be rows if the selected storage multipart mechanism owns part sta
 
 - `id uuid primary key`
 - `source_type varchar`
+- `source_key varchar nullable` (non-null for new Coppermine migration runs)
 - `source_version varchar nullable`
 - `status varchar`
 - `options jsonb`
@@ -275,15 +276,28 @@ Parts need not be rows if the selected storage multipart mechanism owns part sta
 - `completed_at nullable`
 - timestamps
 
-## import_id_map
+Each row is one execution attempt. `source_key` links attempts for the same external source without making the attempt itself the owner of resumable state.
 
-- `import_run_id uuid fk import_runs`
+## import_mappings
+
+- `source_key varchar`
 - `entity_type varchar`
 - `source_id varchar`
 - `target_id uuid`
-- primary key `(import_run_id, entity_type, source_id)`
+- `imported_at timestamptz`
+- primary key `(source_key, entity_type, source_id)`
 
-This makes Coppermine import resumable and auditable.
+## import_checkpoints
+
+- `source_key varchar`
+- `stage varchar`
+- `cursor varchar`
+- `updated_at timestamptz`
+- primary key `(source_key, stage)`
+
+Mappings/checkpoints belong to a stable source instance so a failed run can resume in a later run. Different source galleries use different source keys and therefore cannot collide even when their native IDs are identical.
+
+The earlier unused `import_id_map` table is removed to avoid a second, contradictory mapping model.
 
 ## JSONB policy
 

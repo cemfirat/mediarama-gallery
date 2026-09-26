@@ -15,6 +15,7 @@ final readonly class CoppermineKeywordImporter
         private CoppermineConnectionFactory $sourceFactory,
         private Connection $target,
         private ImportMappingRepository $mappings,
+        private CoppermineSourceKey $sourceKey,
         private CoppermineTablePrefix $prefix,
     ) {
     }
@@ -45,7 +46,7 @@ final readonly class CoppermineKeywordImporter
         $unmapped = [];
 
         foreach ($rows as $row) {
-            $mediaId = $this->mappings->findTargetId('coppermine', 'picture', (string) $row['pid']);
+            $mediaId = $this->mappings->findTargetId($this->sourceKey->value(), 'picture', (string) $row['pid']);
             if ($mediaId === null) {
                 $unmapped[] = (string) $row['pid'];
                 continue;
@@ -122,7 +123,7 @@ SQL,
 
         foreach ($albumRows as $album) {
             $sourceAlbumId = (string) $album['aid'];
-            $collectionId = $this->mappings->findTargetId('coppermine', 'album', $sourceAlbumId);
+            $collectionId = $this->mappings->findTargetId($this->sourceKey->value(), 'album', $sourceAlbumId);
 
             if ($collectionId === null) {
                 $unmappedAlbums[] = $sourceAlbumId;
@@ -137,7 +138,7 @@ SQL,
 
             foreach ($pictureRows as $picture) {
                 $sourcePictureId = (string) $picture['pid'];
-                $mediaId = $this->mappings->findTargetId('coppermine', 'picture', $sourcePictureId);
+                $mediaId = $this->mappings->findTargetId($this->sourceKey->value(), 'picture', $sourcePictureId);
 
                 if ($mediaId === null) {
                     $unmappedPictures[] = $sourcePictureId;
@@ -145,7 +146,7 @@ SQL,
                 }
 
                 $addedBy = (int) $picture['owner_id'] > 0
-                    ? $this->mappings->findTargetId('coppermine', 'user', (string) $picture['owner_id'])
+                    ? $this->mappings->findTargetId($this->sourceKey->value(), 'user', (string) $picture['owner_id'])
                     : null;
 
                 $created += $this->target->executeStatement(

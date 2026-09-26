@@ -11,6 +11,7 @@ final readonly class CoppermineMigrationRunner
 {
     public function __construct(
         private Connection $target,
+        private CoppermineSourceKey $sourceKey,
         private CoppermineSchemaInspector $inspector,
         private CoppermineMigrationPreflight $preflight,
         private CoppermineIdentityImporter $identity,
@@ -32,18 +33,22 @@ final readonly class CoppermineMigrationRunner
         $this->target->executeStatement(
             <<<'SQL'
 INSERT INTO import_runs (
-    id, source_type, source_version, status, options, progress,
+    id, source_type, source_key, source_version, status, options, progress,
     started_at, created_at, updated_at
 ) VALUES (
-    :id, 'coppermine', :version, 'running',
+    :id, 'coppermine', :source_key, :version, 'running',
     CAST(:options AS JSONB), CAST(:progress AS JSONB),
     :started_at, :created_at, :updated_at
 )
 SQL,
             [
                 'id' => $runId->toRfc4122(),
+                'source_key' => $this->sourceKey->value(),
                 'version' => $inspection->detectedVersion,
-                'options' => json_encode(['mode' => 'coppermine-migration'], JSON_THROW_ON_ERROR),
+                'options' => json_encode([
+                    'mode' => 'coppermine-migration',
+                    'source_id' => $this->sourceKey->id(),
+                ], JSON_THROW_ON_ERROR),
                 'progress' => json_encode(['stage' => 'inspect'], JSON_THROW_ON_ERROR),
                 'started_at' => $now->format(DATE_ATOM),
                 'created_at' => $now->format(DATE_ATOM),

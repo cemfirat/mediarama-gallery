@@ -17,6 +17,7 @@ final readonly class CoppermineIdentityImporter
         private Connection $target,
         private ImportMappingRepository $mappings,
         private ImportCheckpointRepository $checkpoints,
+        private CoppermineSourceKey $sourceKey,
         private CoppermineTablePrefix $prefix,
     ) {
     }
@@ -24,7 +25,7 @@ final readonly class CoppermineIdentityImporter
     public function importGroups(int $batchSize = 100): int
     {
         $source = $this->sourceFactory->create();
-        $cursor = (int) ($this->checkpoints->get('coppermine', 'groups') ?? '0');
+        $cursor = (int) ($this->checkpoints->get($this->sourceKey->value(), 'groups') ?? '0');
         $table = $source->quoteIdentifier($this->prefix->table('usergroups'));
 
         $rows = $source->fetchAllAssociative(
@@ -38,7 +39,7 @@ final readonly class CoppermineIdentityImporter
 
         foreach ($rows as $row) {
             $sourceId = (string) $row['group_id'];
-            $targetId = $this->mappings->findTargetId('coppermine', 'group', $sourceId) ?? Uuid::v7();
+            $targetId = $this->mappings->findTargetId($this->sourceKey->value(), 'group', $sourceId) ?? Uuid::v7();
             $slug = 'coppermine-group-'.$sourceId;
 
             $this->target->executeStatement(
@@ -69,8 +70,8 @@ SQL,
                 );
             }
 
-            $this->mappings->remember('coppermine', 'group', $sourceId, $targetId);
-            $this->checkpoints->save('coppermine', 'groups', $sourceId);
+            $this->mappings->remember($this->sourceKey->value(), 'group', $sourceId, $targetId);
+            $this->checkpoints->save($this->sourceKey->value(), 'groups', $sourceId);
         }
 
         return count($rows);
@@ -79,7 +80,7 @@ SQL,
     public function importUsers(int $batchSize = 100): int
     {
         $source = $this->sourceFactory->create();
-        $cursor = (int) ($this->checkpoints->get('coppermine', 'users') ?? '0');
+        $cursor = (int) ($this->checkpoints->get($this->sourceKey->value(), 'users') ?? '0');
         $table = $source->quoteIdentifier($this->prefix->table('users'));
         $languageLocales = $this->languageLocales($source);
 
@@ -95,7 +96,7 @@ SQL,
 
         foreach ($rows as $row) {
             $sourceId = (string) $row['user_id'];
-            $targetId = $this->mappings->findTargetId('coppermine', 'user', $sourceId) ?? Uuid::v7();
+            $targetId = $this->mappings->findTargetId($this->sourceKey->value(), 'user', $sourceId) ?? Uuid::v7();
 
             $this->target->executeStatement(
                 <<<'SQL'
@@ -136,7 +137,7 @@ SQL,
 
             $groupIds = $this->groupIds((string) $row['user_group'], (string) $row['user_group_list']);
             foreach ($groupIds as $index => $sourceGroupId) {
-                $groupId = $this->mappings->findTargetId('coppermine', 'group', $sourceGroupId);
+                $groupId = $this->mappings->findTargetId($this->sourceKey->value(), 'group', $sourceGroupId);
                 if ($groupId === null) {
                     continue;
                 }
@@ -156,8 +157,8 @@ SQL,
                 );
             }
 
-            $this->mappings->remember('coppermine', 'user', $sourceId, $targetId);
-            $this->checkpoints->save('coppermine', 'users', $sourceId);
+            $this->mappings->remember($this->sourceKey->value(), 'user', $sourceId, $targetId);
+            $this->checkpoints->save($this->sourceKey->value(), 'users', $sourceId);
         }
 
         return count($rows);

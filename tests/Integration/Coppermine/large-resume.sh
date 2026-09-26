@@ -78,6 +78,7 @@ PHP
 export DATABASE_URL="postgresql://mediarama:mediarama@127.0.0.1:5432/$TARGET_DB?serverVersion=18&charset=utf8"
 export MEDIA_STORAGE_PATH="$TARGET_ROOT"
 export COPPERMINE_DATABASE_URL="mysql://readonly:readonly@127.0.0.1:3306/$SOURCE_DB"
+export COPPERMINE_SOURCE_ID="fixture-batch"
 export COPPERMINE_TABLE_PREFIX="cpg_"
 export COPPERMINE_ALBUMS_ROOT="$BATCH_ROOT"
 
@@ -137,12 +138,12 @@ $dsn = new Doctrine\DBAL\Tools\DsnParser([
 $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
 
 $checks = [
-    'one failed import run' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'failed'") === 1,
+    'one failed import run' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-batch' AND status = 'failed'") === 1,
     'failure recorded in progress' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'failed' AND progress->>'error' LIKE '%synthetic checkpoint failure%'") === 1,
-    'checkpoint stops before failed source row' => (string) $db->fetchOne("SELECT cursor FROM import_checkpoints WHERE source = 'coppermine' AND stage = 'pictures'") === '3499',
-    '2504 picture mappings before failure' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source = 'coppermine' AND entity_type = 'picture'") === 2504,
+    'checkpoint stops before failed source row' => (string) $db->fetchOne("SELECT cursor FROM import_checkpoints WHERE source_key = 'coppermine:fixture-batch' AND stage = 'pictures'") === '3499',
+    '2504 picture mappings before failure' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source_key = 'coppermine:fixture-batch' AND entity_type = 'picture'") === 2504,
     '2504 media rows before failure' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 2504,
-    'failed source row is not mapped' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source = 'coppermine' AND entity_type = 'picture' AND source_id = '3500'") === 0,
+    'failed source row is not mapped' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source_key = 'coppermine:fixture-batch' AND entity_type = 'picture' AND source_id = '3500'") === 0,
     '2504 queued processing jobs before resume' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 2504,
 ];
 
@@ -191,15 +192,15 @@ $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DA
 
 $checks = [
     'one failed and one completed import run' =>
-        (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine'") === 2
-        && (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'failed'") === 1
-        && (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'completed'") === 1,
-    'final picture checkpoint' => (string) $db->fetchOne("SELECT cursor FROM import_checkpoints WHERE source = 'coppermine' AND stage = 'pictures'") === '5999',
-    '5004 picture mappings' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source = 'coppermine' AND entity_type = 'picture'") === 5004,
-    '5004 distinct source mappings' => (int) $db->fetchOne("SELECT COUNT(DISTINCT source_id) FROM import_mappings WHERE source = 'coppermine' AND entity_type = 'picture'") === 5004,
-    '5004 distinct target mappings' => (int) $db->fetchOne("SELECT COUNT(DISTINCT target_id) FROM import_mappings WHERE source = 'coppermine' AND entity_type = 'picture'") === 5004,
+        (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-batch'") === 2
+        && (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-batch' AND status = 'failed'") === 1
+        && (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-batch' AND status = 'completed'") === 1,
+    'final picture checkpoint' => (string) $db->fetchOne("SELECT cursor FROM import_checkpoints WHERE source_key = 'coppermine:fixture-batch' AND stage = 'pictures'") === '5999',
+    '5004 picture mappings' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source_key = 'coppermine:fixture-batch' AND entity_type = 'picture'") === 5004,
+    '5004 distinct source mappings' => (int) $db->fetchOne("SELECT COUNT(DISTINCT source_id) FROM import_mappings WHERE source_key = 'coppermine:fixture-batch' AND entity_type = 'picture'") === 5004,
+    '5004 distinct target mappings' => (int) $db->fetchOne("SELECT COUNT(DISTINCT target_id) FROM import_mappings WHERE source_key = 'coppermine:fixture-batch' AND entity_type = 'picture'") === 5004,
     '5004 target media rows' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 5004,
-    'previously failed row imported exactly once' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings i JOIN media_assets m ON m.id = i.target_id WHERE i.source = 'coppermine' AND i.entity_type = 'picture' AND i.source_id = '3500' AND m.original_filename = 'bulk-3500.mp3'") === 1,
+    'previously failed row imported exactly once' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings i JOIN media_assets m ON m.id = i.target_id WHERE i.source_key = 'coppermine:fixture-batch' AND i.entity_type = 'picture' AND i.source_id = '3500' AND m.original_filename = 'bulk-3500.mp3'") === 1,
     '5004 queued processing jobs without duplicate dispatch' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 5004,
 ];
 

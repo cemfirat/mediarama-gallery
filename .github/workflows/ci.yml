@@ -55,6 +55,7 @@ jobs:
       UPLOAD_MAX_ASSET_BYTES: 2147483648
       UPLOAD_MAX_CHUNK_BYTES: 16777216
       COPPERMINE_DATABASE_URL: mysql://readonly:readonly@127.0.0.1:3306/coppermine
+      COPPERMINE_SOURCE_ID: fixture-main
       COPPERMINE_TABLE_PREFIX: cpg_
       COPPERMINE_ALBUMS_ROOT: /tmp/coppermine-albums
 
@@ -109,6 +110,20 @@ jobs:
 
       - name: Validate Symfony container
         run: php bin/console lint:container
+
+      - name: Verify Coppermine command surface
+        run: |
+          commands="$(php bin/console list --raw)"
+          printf '%s\n' "$commands" | grep -E '^mediarama:import:coppermine[[:space:]]'
+          printf '%s\n' "$commands" | grep -E '^mediarama:import:coppermine:inspect[[:space:]]'
+          printf '%s\n' "$commands" | grep -E '^mediarama:import:coppermine:reconcile[[:space:]]'
+
+          for removed in identity collections media keywords acl interactions; do
+            if printf '%s\n' "$commands" | grep -q -E "^mediarama:import:coppermine:${removed}[[:space:]]"; then
+              echo "Unexpected mutating stage command remains registered: $removed"
+              exit 1
+            fi
+          done
 
       - name: Validate routes
         run: php bin/console debug:router --show-controllers
@@ -213,6 +228,8 @@ jobs:
           ]);
           $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
           $checks = [
+              'main source audit key' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-main' AND status = 'completed'") === 1,
+              'main source mappings scoped' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source_key = 'coppermine:fixture-main'") > 0,
               'ready media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE processing_state = 'ready'") === 4,
               'ready audio media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,
               'ready video media' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp4' AND mime_type = 'video/mp4' AND media_type = 'video' AND processing_state = 'ready'") === 1,
@@ -492,6 +509,7 @@ jobs:
           export DATABASE_URL="postgresql://mediarama:mediarama@127.0.0.1:5432/mediarama_prefix?serverVersion=18&charset=utf8"
           export MEDIA_STORAGE_PATH="/tmp/mediarama-prefix-media"
           export COPPERMINE_DATABASE_URL="mysql://readonly:readonly@127.0.0.1:3306/coppermine_prefix"
+          export COPPERMINE_SOURCE_ID="fixture-prefix"
           export COPPERMINE_TABLE_PREFIX="odd42__"
 
           php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
@@ -512,7 +530,8 @@ jobs:
           ]);
           $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
           $checks = [
-              'completed prefixed import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'completed'") === 1,
+              'completed prefixed import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-prefix' AND status = 'completed'") === 1,
+              'prefixed source mappings scoped' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source_key = 'coppermine:fixture-prefix'") > 0,
               'prefixed media' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 4,
               'encoded space keyword separator' => (int) $db->fetchOne("SELECT COUNT(*) FROM tags WHERE slug IN ('summer', 'vacation')") === 2,
               'custom keyword links' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_tags mt JOIN media_assets m ON m.id = mt.media_id JOIN tags t ON t.id = mt.tag_id WHERE m.original_filename = 'sample.jpg' AND t.slug IN ('summer', 'vacation')") === 2,
@@ -551,6 +570,7 @@ jobs:
           export DATABASE_URL="postgresql://mediarama:mediarama@127.0.0.1:5432/mediarama17?serverVersion=18&charset=utf8"
           export MEDIA_STORAGE_PATH="/tmp/mediarama17-media"
           export COPPERMINE_DATABASE_URL="mysql://readonly:readonly@127.0.0.1:3306/coppermine17"
+          export COPPERMINE_SOURCE_ID="fixture-17"
           export COPPERMINE_TABLE_PREFIX="cpg_"
           export COPPERMINE_ALBUMS_ROOT="/tmp/coppermine17-albums"
 
@@ -572,7 +592,8 @@ jobs:
           ]);
           $db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
           $checks = [
-              'completed 1.7 import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_version = '1.7.x-compatible' AND status = 'completed'") === 1,
+              'completed 1.7 import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND source_key = 'coppermine:fixture-17' AND source_version = '1.7.x-compatible' AND status = 'completed'") === 1,
+              '1.7 source mappings scoped' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_mappings WHERE source_key = 'coppermine:fixture-17'") > 0,
               'five migrated 1.7 media' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 5,
               '1.7 WebP ready' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.webp' AND mime_type = 'image/webp' AND media_type = 'image' AND processing_state = 'ready'") === 1,
               '1.7 audio ready' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_assets WHERE original_filename = 'sample.mp3' AND mime_type = 'audio/mpeg' AND media_type = 'audio' AND processing_state = 'ready'") === 1,

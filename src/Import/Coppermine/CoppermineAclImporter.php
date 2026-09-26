@@ -16,6 +16,7 @@ final readonly class CoppermineAclImporter
         private CoppermineConnectionFactory $sourceFactory,
         private Connection $target,
         private ImportMappingRepository $mappings,
+        private CoppermineSourceKey $sourceKey,
         private CoppermineTablePrefix $prefix,
     ) {
     }
@@ -35,7 +36,7 @@ final readonly class CoppermineAclImporter
 
         foreach ($rows as $row) {
             $aid = (string) $row['aid'];
-            $collectionId = $this->mappings->findTargetId('coppermine', 'album', $aid);
+            $collectionId = $this->mappings->findTargetId($this->sourceKey->value(), 'album', $aid);
             if ($collectionId === null) {
                 $unmapped[] = 'album:'.$aid;
                 continue;
@@ -66,7 +67,7 @@ SQL,
                 $passwordReset[] = $aid;
             }
 
-            $ownerId = $this->mappings->findTargetId('coppermine', 'user', (string) $row['owner']);
+            $ownerId = $this->mappings->findTargetId($this->sourceKey->value(), 'user', (string) $row['owner']);
             if ($ownerId !== null) {
                 $rules += $this->rememberRule($collectionId, $ownerId, null, 'collection.view');
             }
@@ -87,7 +88,7 @@ SQL,
 
             if ($visibility >= self::FIRST_USER_CAT) {
                 $sourceUserId = (string) ($visibility - self::FIRST_USER_CAT);
-                $userId = $this->mappings->findTargetId('coppermine', 'user', $sourceUserId);
+                $userId = $this->mappings->findTargetId($this->sourceKey->value(), 'user', $sourceUserId);
 
                 if ($userId === null) {
                     $unmapped[] = sprintf('album:%s user:%s', $aid, $sourceUserId);
@@ -98,7 +99,7 @@ SQL,
                 continue;
             }
 
-            $groupId = $this->mappings->findTargetId('coppermine', 'group', (string) $visibility);
+            $groupId = $this->mappings->findTargetId($this->sourceKey->value(), 'group', (string) $visibility);
             if ($groupId === null) {
                 $unmapped[] = sprintf('album:%s group:%d', $aid, $visibility);
                 continue;
@@ -138,8 +139,8 @@ SQL,
             $sourceCategoryId = (string) $row['cid'];
             $sourceGroupId = (string) $row['group_id'];
 
-            $collectionId = $this->mappings->findTargetId('coppermine', 'category', $sourceCategoryId);
-            $groupId = $this->mappings->findTargetId('coppermine', 'group', $sourceGroupId);
+            $collectionId = $this->mappings->findTargetId($this->sourceKey->value(), 'category', $sourceCategoryId);
+            $groupId = $this->mappings->findTargetId($this->sourceKey->value(), 'group', $sourceGroupId);
 
             if ($collectionId === null || $groupId === null) {
                 $unmapped[] = sprintf(
