@@ -82,6 +82,7 @@ jobs:
           coverage: none
           extensions: pdo_pgsql, pdo_mysql
           tools: composer:v2
+          ini-values: variables_order=EGPCS
 
       - uses: actions/setup-node@v4
         with:
@@ -98,6 +99,22 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Verify dependency install is reproducible
+        run: |
+          git diff --exit-code -- composer.lock symfony.lock .env config
+          php -r '
+          if (strpos((string) ini_get("variables_order"), "E") === false) {
+              fwrite(STDERR, "PHP variables_order does not expose environment variables.\n");
+              exit(1);
+          }
+          $url = $_ENV["DATABASE_URL"] ?? null;
+          if (!is_string($url) || parse_url($url, PHP_URL_USER) !== "mediarama") {
+              fwrite(STDERR, "CI DATABASE_URL is not visible through PHP environment variables.\n");
+              exit(1);
+          }
+          echo "OK reproducible PHP dependency/runtime environment\n";
+          '
+
       - name: Verify ImageMagick application resource envelope
         run: php tests/Integration/ImageMagick/resource-limits.php
 
@@ -106,7 +123,7 @@ jobs:
 
       - name: Build UIkit frontend
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
           test -s public/build/app.css
           test -s public/build/uikit.min.js
