@@ -20,7 +20,7 @@ Each source concept must end in one of these states:
 
 | Coppermine source | Meaning | Current Mediarama status | Classification | Remaining work |
 | --- | --- | --- | --- | --- |
-| `albums` | album metadata, ownership, visibility, password settings, explicit cover, aggregate views | importer preserves structure/ACL/password intent, positive explicit cover PIDs and `alb_hits` as collection `view_count` | Transform | per-album upload/comment/vote flags still need final classification; real-gallery tests remain |
+| `albums` | album metadata, ownership, visibility, password settings, explicit cover, aggregate views, per-album upload/comment/rating policy | importer preserves structure/ACL/password intent, positive explicit cover PIDs, `alb_hits` as collection `view_count`, and combines album switches with group capabilities into collection-scoped ACL rules | Transform | real-gallery validation remains |
 | `banned` | user/name/email/IP bans, expiry, brute-force flag | non-empty table is rejected by preflight | Unsupported / block | do not silently drop security state; migrate only after a Mediarama ban model is deliberately designed |
 | `bridge` | external-application bridge configuration | enabled bridging is rejected by preflight | Unsupported / block | local Coppermine users are not treated as authoritative while bridging is enabled |
 | `categories` | hierarchy, ownership, structural grouping, explicit cover | importer preserves hierarchy/ownership and positive explicit cover PIDs | Transform | real-gallery tests remain |
@@ -53,7 +53,30 @@ These are not part of the server-side `favpics` table for an anonymous visitor. 
 
 Current classification: **intentional limitation unless a practical opt-in migration workflow is designed**.
 
-### Album/category keyword semantics
+### Per-album upload/comment/rating policy
+
+Coppermine's `albums.uploads`, `albums.comments` and `albums.votes` are active runtime policy, not presentation metadata.
+
+Verified source behavior combines each album switch with the user's/group's corresponding global capability.
+
+Mediarama maps this into its native resource ACL model:
+
+- source upload capability + `uploads=YES` → `collection.media.add`;
+- source comment capability + `comments=YES` → `media.comment`;
+- source rating capability + `votes=YES` → `media.rate`.
+
+No rule is created when the album switch is disabled.
+
+This avoids both failure modes:
+
+- silently dropping a restrictive album policy;
+- adding Coppermine-only boolean fields that duplicate Mediarama authorization state.
+
+CI includes an enabled album and a disabled album. It verifies the ACL rows and exercises the actual collection upload-permission repository for a non-owner user.
+
+Classification: **Transform**.
+
+## Album/category keyword semantics
 
 Coppermine can associate an album keyword with media whose picture keyword string matches that value, meaning some album-like membership can be dynamic rather than represented solely by `pictures.aid`.
 

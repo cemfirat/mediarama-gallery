@@ -238,7 +238,7 @@ INSERT INTO cpg_albums (
   aid, title, description, visibility, uploads, comments, votes, pos, category,
   owner, thumb, keyword
 ) VALUES (
-  11, 'Linked Album', 'Membership comes from album keyword', 0, 'NO', 'YES', 'YES', 2, 2,
+  11, 'Linked Album', 'Membership comes from album keyword', 0, 'NO', 'NO', 'NO', 2, 2,
   1, -1, 'summer'
 );
 

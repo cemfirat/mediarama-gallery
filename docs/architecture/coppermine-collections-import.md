@@ -36,6 +36,28 @@ Non-zero visibility values can represent group/user restrictions. They are impor
 
 This intentionally avoids accidentally publishing a previously restricted album.
 
+## Album interaction/upload policy
+
+Coppermine stores three per-album switches:
+
+- `uploads` — visitors with upload capability may add files to the album;
+- `comments` — comments are enabled for users/groups that can comment;
+- `votes` — ratings are enabled for users/groups that can rate.
+
+These are not copied as legacy booleans.
+
+The ACL import stage combines the album switch with the source group's corresponding global capability and creates native collection-scoped rules:
+
+- `uploads=YES` + `can_upload_pictures=1` → `collection.media.add`;
+- `comments=YES` + `can_post_comments=1` → `media.comment`;
+- `votes=YES` + `can_rate_pictures=1` → `media.rate`.
+
+A `NO` album switch creates no allow rule for that capability.
+
+This matches Coppermine's two-level policy: a user needs the global/group capability **and** the album must permit the action.
+
+`collection.media.add` is already consumed by Mediarama's upload authorization path. Comment/rating write commands must use the corresponding collection-scoped ACL capability when those application commands are exposed; preserving the rule now prevents migration loss without carrying Coppermine-specific runtime fields forward.
+
 ## Resumability
 
 Categories and albums have independent persistent checkpoints.

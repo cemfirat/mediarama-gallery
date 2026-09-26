@@ -27,8 +27,10 @@ final readonly class CoppermineAclImporter
         $table = $source->quoteIdentifier($this->prefix->table('albums'));
 
         $rows = $source->fetchAllAssociative(
-            'SELECT aid, owner, visibility, alb_password, alb_password_hint FROM '.$table.' ORDER BY aid ASC',
+            'SELECT aid, owner, visibility, uploads, comments, votes, alb_password, alb_password_hint FROM '.$table.' ORDER BY aid ASC',
         );
+
+        $capabilityGroups = $this->capabilityGroups($source);
 
         $rules = 0;
         $unmapped = [];
@@ -71,6 +73,14 @@ SQL,
             if ($ownerId !== null) {
                 $rules += $this->rememberRule($collectionId, $ownerId, null, 'collection.view');
             }
+
+            $rules += $this->importAlbumCapabilities(
+                $collectionId,
+                $aid,
+                $row,
+                $capabilityGroups,
+                $unmapped,
+            );
 
             $visibility = (int) $row['visibility'];
             if ($visibility === 0) {
@@ -117,6 +127,93 @@ SQL,
             array_values(array_unique($unmapped)),
             $passwordReset,
         );
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function capabilityGroups(Connection $source): array
+    {
+        $table = $source->quoteIdentifier($this->prefix->table('usergroups'));
+        $rows = $source->fetchAllAssociative(
+            'SELECT group_id, can_upload_pictures, can_post_comments, can_rate_pictures FROM '.$table.' ORDER BY group_id ASC',
+        );
+
+        $groups = [
+            'collection.media.add' => [],
+            'media.comment' => [],
+            'media.rate' => [],
+        ];
+
+        foreach ($rows as $row) {
+            $sourceGroupId = (string) $row['group_id'];
+
+            if ((int) $row['can_upload_pictures'] === 1) {
+                $groups['collection.media.add'][] = $sourceGroupId;
+            }
+            if ((int) $row['can_post_comments'] === 1) {
+                $groups['media.comment'][] = $sourceGroupId;
+            }
+            if ((int) $row['can_rate_pictures'] === 1) {
+                $groups['media.rate'][] = $sourceGroupId;
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @param array<string, mixed> $album
+     * @param array<string, list<string>> $capabilityGroups
+     * @param list<string> $unmapped
+     */
+    private function importAlbumCapabilities(
+        Uuid $collectionId,
+        string $sourceAlbumId,
+        array $album,
+        array $capabilityGroups,
+        array &$unmapped,
+    ): int {
+        $sourceFlags = [
+            'collection.media.add' => (string) $album['uploads'],
+            'media.comment' => (string) $album['comments'],
+            'media.rate' => (string) $album['votes'],
+        ];
+
+        $rules = 0;
+
+        foreach ($sourceFlags as $capability => $enabled) {
+            if ($enabled !== 'YES') {
+                continue;
+            }
+
+            foreach ($capabilityGroups[$capability] as $sourceGroupId) {
+                $groupId = $this->mappings->findTargetId(
+                    $this->sourceKey->value(),
+                    'group',
+                    $sourceGroupId,
+                );
+
+                if ($groupId === null) {
+                    $unmapped[] = sprintf(
+                        'album:%s capability:%s group:%s',
+                        $sourceAlbumId,
+                        $capability,
+                        $sourceGroupId,
+                    );
+                    continue;
+                }
+
+                $rules += $this->rememberRule(
+                    $collectionId,
+                    null,
+                    $groupId,
+                    $capability,
+                );
+            }
+        }
+
+        return $rules;
     }
 
     /** @param list<string> $unmapped */

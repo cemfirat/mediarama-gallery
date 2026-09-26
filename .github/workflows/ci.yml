@@ -252,6 +252,10 @@ jobs:
               'restricted password-reset collection' => (int) $db->fetchOne("SELECT COUNT(*) FROM collections WHERE title = 'Fixture Album' AND visibility = 'restricted' AND password_protected = TRUE AND password_reset_required = TRUE") === 1,
               'category creation ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Category' AND g.name = 'Registered' AND ca.capability = 'collection.create_child' AND ca.effect = 'allow'") === 1,
               'group restricted ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Album' AND g.name = 'Registered' AND ca.capability = 'collection.view' AND ca.effect = 'allow'") === 1,
+              'album upload ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Album' AND g.name = 'Registered' AND ca.capability = 'collection.media.add' AND ca.effect = 'allow'") === 1,
+              'album comment ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Album' AND g.name = 'Registered' AND ca.capability = 'media.comment' AND ca.effect = 'allow'") === 1,
+              'album rating ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN groups g ON g.id = ca.group_id WHERE c.title = 'Fixture Album' AND g.name = 'Registered' AND ca.capability = 'media.rate' AND ca.effect = 'allow'") === 1,
+              'disabled linked-album interaction ACLs absent' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id WHERE c.title = 'Linked Album' AND ca.capability IN ('collection.media.add', 'media.comment', 'media.rate')") === 0,
               'user restricted ACL' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_access ca JOIN collections c ON c.id = ca.collection_id JOIN users u ON u.id = ca.user_id WHERE c.title = 'User Restricted Album' AND u.username = 'viewer-user' AND ca.capability = 'collection.view' AND ca.effect = 'allow'") === 1,
               'tags' => (int) $db->fetchOne('SELECT COUNT(*) FROM tags') === 2,
               'album-keyword membership' => (int) $db->fetchOne("SELECT COUNT(*) FROM collection_media cm JOIN collections c ON c.id = cm.collection_id JOIN media_assets m ON m.id = cm.media_id WHERE c.title = 'Linked Album' AND m.original_filename = 'sample.jpg'") === 1,
@@ -273,6 +277,23 @@ jobs:
                   exit(1);
               }
           }
+
+          $uploadPermissions = new Mediarama\Collection\Infrastructure\Persistence\DbalCollectionUploadPermissionRepository($db);
+          $viewerId = Symfony\Component\Uid\Uuid::fromString((string) $db->fetchOne("SELECT id FROM users WHERE username = 'viewer-user'"));
+          $fixtureAlbumId = Symfony\Component\Uid\Uuid::fromString((string) $db->fetchOne("SELECT id FROM collections WHERE title = 'Fixture Album'"));
+          $linkedAlbumId = Symfony\Component\Uid\Uuid::fromString((string) $db->fetchOne("SELECT id FROM collections WHERE title = 'Linked Album'"));
+
+          if (!$uploadPermissions->userCanUpload($viewerId, $fixtureAlbumId)) {
+              fwrite(STDERR, "FAIL runtime album upload permission should allow Registered viewer on Fixture Album".PHP_EOL);
+              exit(1);
+          }
+          echo "OK runtime album upload permission allows source-enabled album".PHP_EOL;
+
+          if ($uploadPermissions->userCanUpload($viewerId, $linkedAlbumId)) {
+              fwrite(STDERR, "FAIL runtime album upload permission should deny Registered viewer on Linked Album".PHP_EOL);
+              exit(1);
+          }
+          echo "OK runtime album upload permission denies source-disabled album".PHP_EOL;
           PHP
 
       - name: Verify Coppermine migration preflight blockers

@@ -41,9 +41,14 @@ Writing an existing chunk index replaces that chunk only after the replacement p
 
 Destination authorization is checked when the session is created and again at finalization.
 
-Collection owners may upload to their own collection. Group permission `collection.media.add` grants upload capability according to the current foundation ACL model.
+Collection owners may upload to their own collection. Resource-scoped `collection.media.add` rules grant upload capability to explicitly allowed users/groups.
 
-The ACL model will become resource-scoped as collection sharing rules are expanded; a global permission must not become the final sharing model.
+For migrated Coppermine albums, these collection rules are created only when both conditions were true in the source:
+
+- the group could upload pictures;
+- the album allowed visitor uploads.
+
+This preserves the source's album-level upload switch instead of treating a global `media.upload` capability as permission to upload everywhere.
 
 ## Current authentication boundary
 
