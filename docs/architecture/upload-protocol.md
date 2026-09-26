@@ -44,6 +44,22 @@ After the MIME/type allow policy and expected-size check pass, Mediarama validat
 FFprobe runs through an argv-only process with a parent timeout plus bounded probe size and analyze duration. A structural validation failure leaves the upload session in `uploaded`, keeps the temporary object retryable, and prevents immutable-original promotion, `MediaAsset` creation and background dispatch.
 
 
+## Finalization idempotency and recovery
+
+After MIME/decoder/probe validation, PostgreSQL atomically reserves one `finalization_media_id` for the upload session and transitions it to `finalizing`. Every concurrent or retried finalizer converges on that same MediaAsset ID and therefore the same immutable storage target.
+
+The filesystem promotion is idempotent for the reserved target: if another request already promoted the temporary object, the later request adopts the existing target instead of creating a second original.
+
+Recovery is designed for crashes at the important boundaries:
+
+- before promotion: the reserved ID and temporary object remain available;
+- after promotion but before MediaAsset persistence: the reserved permanent object can be inspected and reused;
+- after MediaAsset persistence but before finalization mapping: the same MediaAsset ID is upserted and mapped;
+- after mapping but before session completion: retry completes the session;
+- before processing dispatch: retry dispatches the still-undispatched mapping.
+
+Filesystem, PostgreSQL and Messenger are not falsely treated as one exactly-once transaction. Processing delivery is at-least-once; the MediaAsset ID is stable and `ProcessMediaHandler` is idempotent for already-ready media and existing derivative identities.
+
 ## Resume
 
 Clients query session status and only resend missing chunks.

@@ -11,4 +11,8 @@ interface UploadFinalizationRepository
     public function findMediaId(Uuid $sessionId): ?Uuid;
 
     public function remember(Uuid $sessionId, Uuid $mediaId): void;
+
+    public function isProcessingDispatched(Uuid $sessionId): bool;
+
+    public function markProcessingDispatched(Uuid $sessionId): void;
 }

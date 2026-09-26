@@ -111,7 +111,13 @@ final readonly class LocalMediaStorage implements MediaStorage
             throw new \RuntimeException('Unable to create permanent media directory.');
         }
 
-        if (!rename($source, $target)) {
+        if (!@rename($source, $target)) {
+            // Another finalizer may have promoted the same reserved object
+            // after our initial target check. Converge on that object.
+            if (is_file($target)) {
+                return $this->stat($permanent);
+            }
+
             throw new \RuntimeException('Unable to promote storage object.');
         }
 
