@@ -81,6 +81,9 @@ services:
             $maximumAssetBytes: '%env(int:UPLOAD_MAX_ASSET_BYTES)%'
             $maximumChunkBytes: '%env(int:UPLOAD_MAX_CHUNK_BYTES)%'
 
+    Mediarama\Upload\Application\UploadFinalizationClaimRepository:
+        alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadFinalizationClaimRepository
+
     Mediarama\Upload\Application\UploadFinalizationRepository:
         alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadFinalizationRepository
 

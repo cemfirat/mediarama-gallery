@@ -252,11 +252,21 @@ Aggregates are derived/cached, not the source of truth.
 - `expected_mime varchar nullable`
 - `temporary_storage_key text`
 - `status varchar`
+- `finalization_media_id uuid nullable unique` — durable MediaAsset reservation used by concurrent/retried finalization
 - `expires_at timestamptz`
 - `created_at`
 - `updated_at`
 
 Parts need not be rows if the selected storage multipart mechanism owns part state. A DB table for parts should only be added if the implementation needs it.
+
+## upload_finalizations
+
+- `upload_session_id uuid primary key fk upload_sessions`
+- `media_id uuid unique fk media_assets`
+- `processing_dispatched_at timestamptz nullable`
+- `created_at timestamptz`
+
+The session reservation is intentionally not a foreign key to `media_assets`: it must exist before filesystem promotion and before the MediaAsset row is durable. The finalization mapping becomes the referential link after persistence. `processing_dispatched_at` records successful enqueueing; a crash after externally visible dispatch but before this marker may cause a duplicate retry, which is safe because media processing is idempotent.
 
 ## import_runs
 

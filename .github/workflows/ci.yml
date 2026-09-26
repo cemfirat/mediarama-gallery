@@ -135,6 +135,9 @@ jobs:
       - name: Show migration status
         run: php bin/console doctrine:migrations:status
 
+      - name: Verify concurrent and crash-recoverable upload finalization
+        run: php tests/Integration/Upload/finalization-recovery.php
+
       - name: Run unit tests
         run: vendor/bin/phpunit
 
