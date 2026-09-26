@@ -80,11 +80,11 @@ Application-level limits are configured through:
 - `IMAGEMAGICK_LIMIT_LIST_LENGTH`
 - `IMAGEMAGICK_PROCESS_TIMEOUT_SECONDS`
 
-The command-line limits are prepended to both geometry inspection and derivative generation, so they are active before ImageMagick reads the untrusted source. Sequence length is additionally constrained through `MAGICK_LIST_LENGTH_LIMIT`.
+The command-line limits are prepended to both geometry inspection and derivative generation, so they are active before ImageMagick reads the untrusted source. `area` accepts either a finite cache-byte value (for example `512MiB`) or a pixel-area value supported by ImageMagick (for example `64MP`). Sequence length is requested through `MAGICK_LIST_LENGTH_LIMIT` where supported; the deployment policy remains the authoritative ceiling for builds that do not expose that environment control.
 
 The Symfony Process timeout remains a second hard stop around the ImageMagick resource-time limit. This is intentional: ImageMagick resource limits primarily control its own pixel-cache/runtime resources, while the parent process must still be able to terminate a command that does not return.
 
-Production deployments should also install a restrictive ImageMagick `policy.xml` as an upper ceiling. A reviewed example is kept at `config/imagemagick/policy.xml.example`. ImageMagick policy limits cannot be relaxed by a larger command-line value.
+Production deployments should also install a restrictive ImageMagick `policy.xml` as an upper ceiling. A reviewed example is kept at `config/imagemagick/policy.xml.example`. ImageMagick policy limits cannot be relaxed by a larger command-line value. Version-specific policy keys must only be enabled after checking the deployed ImageMagick version; for example `max-memory-request` is an ImageMagick 7 feature.
 
 The defaults are deliberately finite but are deployment settings rather than universal hardware recommendations. Operators may tighten them for smaller workers or raise them after measurement for unusually large professional images. Width/height, disk and elapsed-time limits must remain finite for Internet-facing installations.
 

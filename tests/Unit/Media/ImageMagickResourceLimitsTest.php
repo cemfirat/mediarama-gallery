@@ -15,7 +15,7 @@ final class ImageMagickResourceLimitsTest extends TestCase
             memory: '64MiB',
             map: '128MiB',
             disk: '256MiB',
-            area: '32MiB',
+            area: '64MP',
             width: 4096,
             height: 3072,
             files: 32,
@@ -28,7 +28,7 @@ final class ImageMagickResourceLimitsTest extends TestCase
             '-limit', 'memory', '64MiB',
             '-limit', 'map', '128MiB',
             '-limit', 'disk', '256MiB',
-            '-limit', 'area', '32MiB',
+            '-limit', 'area', '64MP',
             '-limit', 'width', '4096',
             '-limit', 'height', '3072',
             '-limit', 'file', '32',
@@ -47,6 +47,14 @@ final class ImageMagickResourceLimitsTest extends TestCase
         $this->expectExceptionMessage('must be a finite byte value');
 
         new ImageMagickResourceLimits(memory: 'unlimited');
+    }
+
+    public function testRejectsInvalidAreaLimit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('area limit must be a finite byte or pixel-cache area value');
+
+        new ImageMagickResourceLimits(area: 'unlimited');
     }
 
     public function testRejectsNonPositiveNumericLimit(): void

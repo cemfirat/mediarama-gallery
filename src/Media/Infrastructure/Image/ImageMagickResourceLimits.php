@@ -22,7 +22,6 @@ final readonly class ImageMagickResourceLimits
             'memory' => $this->memory,
             'map' => $this->map,
             'disk' => $this->disk,
-            'area' => $this->area,
         ] as $name => $value) {
             if (!preg_match('/^\d+(?:\.\d+)?(?:B|[KMGTPE]i?B)?$/i', $value)) {
                 throw new \InvalidArgumentException(sprintf(
@@ -30,6 +29,12 @@ final readonly class ImageMagickResourceLimits
                     $name,
                 ));
             }
+        }
+
+        if (!preg_match('/^\d+(?:\.\d+)?(?:B|[KMGTPE]i?B|[KMGTPE]?P)?$/i', $this->area)) {
+            throw new \InvalidArgumentException(
+                'ImageMagick area limit must be a finite byte or pixel-cache area value.',
+            );
         }
 
         foreach ([
