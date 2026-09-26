@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Example production ceiling for Mediarama ImageMagick workers.
+
+  Install/merge this into the ImageMagick policy used by the runtime image
+  rather than relying on this repository path directly. ImageMagick policies
+  are deployment-level maximums: Mediarama's per-process -limit arguments may
+  reduce them further but cannot relax a stricter policy.
+-->
+<policymap>
+  <policy domain="resource" name="memory" value="256MiB"/>
+  <policy domain="resource" name="map" value="512MiB"/>
+  <policy domain="resource" name="disk" value="2GiB"/>
+  <policy domain="resource" name="area" value="64MP"/>
+  <policy domain="resource" name="width" value="32768"/>
+  <policy domain="resource" name="height" value="32768"/>
+  <policy domain="resource" name="file" value="128"/>
+  <policy domain="resource" name="thread" value="2"/>
+  <policy domain="resource" name="time" value="60"/>
+  <policy domain="resource" name="list-length" value="32"/>
+  <!-- ImageMagick 7.0.6-1+ only; enable after verifying the deployed version:
+  <policy domain="system" name="max-memory-request" value="64MiB"/>
+  -->
+</policymap>

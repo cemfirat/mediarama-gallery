@@ -102,16 +102,30 @@ services:
     Mediarama\Media\Application\ImageDerivativeGenerator:
         alias: Mediarama\Media\Infrastructure\Image\ImageMagickDerivativeGenerator
 
+    Mediarama\Media\Infrastructure\Image\ImageMagickResourceLimits:
+        arguments:
+            $memory: '%env(IMAGEMAGICK_LIMIT_MEMORY)%'
+            $map: '%env(IMAGEMAGICK_LIMIT_MAP)%'
+            $disk: '%env(IMAGEMAGICK_LIMIT_DISK)%'
+            $area: '%env(IMAGEMAGICK_LIMIT_AREA)%'
+            $width: '%env(int:IMAGEMAGICK_LIMIT_WIDTH)%'
+            $height: '%env(int:IMAGEMAGICK_LIMIT_HEIGHT)%'
+            $files: '%env(int:IMAGEMAGICK_LIMIT_FILES)%'
+            $threads: '%env(int:IMAGEMAGICK_LIMIT_THREADS)%'
+            $timeSeconds: '%env(int:IMAGEMAGICK_LIMIT_TIME_SECONDS)%'
+            $listLength: '%env(int:IMAGEMAGICK_LIMIT_LIST_LENGTH)%'
+
     Mediarama\Media\Infrastructure\Image\ImageMagickProcess:
         arguments:
             $binary: '%env(IMAGEMAGICK_BINARY)%'
+            $identifyBinary: '%env(IMAGEMAGICK_IDENTIFY_BINARY)%'
+            $timeoutSeconds: '%env(float:IMAGEMAGICK_PROCESS_TIMEOUT_SECONDS)%'
+
+    Mediarama\Media\Application\InspectImageFileGeometry:
+        alias: Mediarama\Media\Infrastructure\Image\ImageMagickFileGeometryInspector
 
     Mediarama\Media\Application\InspectImageGeometry:
         alias: Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector
-
-    Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector:
-        arguments:
-            $identifyBinary: '%env(IMAGEMAGICK_IDENTIFY_BINARY)%'
 
     mediarama.media.profile.thumbnail:
         class: Mediarama\Media\Application\ImageDerivativeProfile
