@@ -101,7 +101,14 @@ jobs:
 
       - name: Verify dependency install is reproducible
         run: |
-          git diff --exit-code -- composer.lock symfony.lock .env config
+          status="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$status" ]; then
+            echo "Dependency install changed or created repository files:"
+            printf '%s\n' "$status"
+            git diff -- . || true
+            exit 1
+          fi
+
           php -r '
           if (strpos((string) ini_get("variables_order"), "E") === false) {
               fwrite(STDERR, "PHP variables_order does not expose environment variables.\n");
