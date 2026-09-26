@@ -23,15 +23,19 @@ final readonly class LocalContentInspector implements ContentInspector
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $prefix = '';
 
-        while (!feof($stream)) {
-            $chunk = fread($stream, 1024 * 1024);
-            if ($chunk === false) {
-                throw new \RuntimeException('Unable to inspect uploaded content.');
+        try {
+            while (!feof($stream)) {
+                $chunk = fread($stream, 1024 * 1024);
+                if ($chunk === false) {
+                    throw new \RuntimeException('Unable to inspect uploaded content.');
+                }
+                if (strlen($prefix) < 262144) {
+                    $prefix .= substr($chunk, 0, 262144 - strlen($prefix));
+                }
+                hash_update($context, $chunk);
             }
-            if (strlen($prefix) < 262144) {
-                $prefix .= substr($chunk, 0, 262144 - strlen($prefix));
-            }
-            hash_update($context, $chunk);
+        } finally {
+            fclose($stream);
         }
 
         $stat = $this->storage->stat($object);

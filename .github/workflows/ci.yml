@@ -50,6 +50,10 @@ jobs:
       MESSENGER_TRANSPORT_DSN: doctrine://default?queue_name=async&auto_setup=false
       MEDIA_STORAGE_PATH: /tmp/mediarama-media
       EXIFTOOL_BINARY: exiftool
+      FFPROBE_BINARY: ffprobe
+      FFPROBE_PROCESS_TIMEOUT_SECONDS: 30
+      FFPROBE_PROBE_SIZE_BYTES: 33554432
+      FFPROBE_ANALYZE_DURATION_US: 5000000
       IMAGEMAGICK_BINARY: convert
       IMAGEMAGICK_IDENTIFY_BINARY: identify
       IMAGEMAGICK_LIMIT_MEMORY: 256MiB
@@ -102,6 +106,9 @@ jobs:
 
       - name: Verify ImageMagick application resource envelope
         run: php tests/Integration/ImageMagick/resource-limits.php
+
+      - name: Verify upload structural media validation
+        run: php tests/Integration/Upload/structural-validation.php
 
       - name: Build UIkit frontend
         run: |

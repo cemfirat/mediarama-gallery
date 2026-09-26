@@ -50,6 +50,16 @@ services:
     Mediarama\Upload\Application\ContentInspector:
         alias: Mediarama\Upload\Infrastructure\LocalContentInspector
 
+    Mediarama\Media\Application\ValidateStoredMediaStructure:
+        alias: Mediarama\Media\Infrastructure\Probe\LocalStoredMediaStructureValidator
+
+    Mediarama\Media\Infrastructure\Probe\FfprobeProcess:
+        arguments:
+            $binary: '%env(FFPROBE_BINARY)%'
+            $timeoutSeconds: '%env(float:FFPROBE_PROCESS_TIMEOUT_SECONDS)%'
+            $probeSizeBytes: '%env(int:FFPROBE_PROBE_SIZE_BYTES)%'
+            $analyzeDurationMicroseconds: '%env(int:FFPROBE_ANALYZE_DURATION_US)%'
+
     Mediarama\Collection\Application\CollectionUploadPermissionRepository:
         alias: Mediarama\Collection\Infrastructure\Persistence\DbalCollectionUploadPermissionRepository
 
