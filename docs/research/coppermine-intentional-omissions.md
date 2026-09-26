@@ -172,7 +172,23 @@ Plugin name/path/enabled/priority describe the Coppermine runtime, not a portabl
 
 Preserved meaning: plugin-owned business data only after case-by-case audit; the legacy registry itself is not target runtime state.
 
-## 12. Dynamic/automatic cover selection
+## 12. Derived Coppermine EXIF cache
+
+Source: `exif.exifData`.
+
+Decision: **do not migrate the serialized cache as authoritative metadata**.
+
+Reason:
+
+Coppermine 1.6 and 1.7 populate this table by reading EXIF from the picture file, filtering the parsed result to configured EXIF fields and serializing that derived array for later reads. When picture metadata is refreshed/edited, Coppermine deletes the cached row so it can be rebuilt from the file.
+
+Mediarama instead re-extracts the migrated original with ExifTool, preserving a richer EXIF/IPTC/XMP snapshot plus normalized canonical metadata. Importing the old serialized cache would preserve a potentially stale and deliberately reduced derivative rather than the source media metadata.
+
+CI includes a deliberately stale source cache value and proves that the target keeps the value read from the original JPEG.
+
+Preserved meaning: embedded metadata from the original media file, not the source application's cache implementation.
+
+## 13. Dynamic/automatic cover selection
 
 Source values:
 

@@ -29,7 +29,7 @@ Each source concept must end in one of these states:
 | `config` | large installation-wide behavior/config surface | explicit migration allowlist only; no bulk copy | Transform + intentional config omission | dedicated rules cover bridge/private-album semantics, keyword parsing, rating normalization and source-language validation; all other keys remain target product/operations policy unless explicitly added |
 | `dict` | derived keyword dictionary | not migrated; source picture keywords are normalized into tags/media_tags | Intentional omission / rebuild | none: Coppermine itself rebuilds this table from `pictures.keywords` |
 | `ecards` | optional sent-e-card log with sender/recipient identity/contact data, IP and encoded payload | not migrated into Mediarama product storage | Intentional omission | separate restricted archive/export only if a specific installation has a retention obligation |
-| `exif` | persisted EXIF blob per picture | source file metadata currently re-extracted instead | Transform | compare stored EXIF vs source-file metadata; preserve source-only fields if necessary |
+| `exif` | serialized cache of selected EXIF values derived from the picture file | not migrated as authoritative data; Mediarama re-extracts the original file with ExifTool | Intentional cache rebuild / Transform | real-gallery validation only |
 | `favpics` | authenticated-user favorites serialized in source | decoded for mapped users/pictures and imported to normalized favorites | Transform | anonymous browser-local favorites remain an intentional limitation |
 | `filetypes` | extension→MIME→content type→player registry | not migrated as runtime policy; actual source files are content-inspected and unsupported real MIME/decoder states block preflight | Intentional config omission + content transform | registry remains audit evidence only; target support is determined from real bytes and Mediarama policy |
 | `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | raw rows are intentionally not migrated; aggregate `pictures.hits` / `albums.alb_hits` are preserved separately as `view_count` | Intentional omission of raw telemetry + Direct aggregate preservation | retain product counters without copying privacy-heavy network/client history |
@@ -99,7 +99,25 @@ Required migration behavior:
 3. classify each plugin as supported migration / custom migration / intentional omission / blocker;
 4. warn before migration when unknown plugin data may be lost.
 
-### Custom file types
+### Coppermine EXIF cache
+
+The `exif` table is not an independent metadata authority.
+
+Verified in both 1.6 and 1.7:
+
+- when no row exists, Coppermine reads EXIF from the image file;
+- it strips the parsed result to configured fields and serializes that derived array into `exif.exifData`;
+- when picture metadata is refreshed/edited, Coppermine deletes the cached row so it will be regenerated from the file on the next read.
+
+Migration policy: **rebuild from the original media file**.
+
+Mediarama already runs ExifTool against the migrated original and preserves a richer group-qualified EXIF/IPTC/XMP snapshot plus normalized canonical metadata. Importing the serialized Coppermine cache would add stale-data risk and would lose fields Coppermine had not configured for display.
+
+CI now includes an intentionally stale `cpg_exif` cache row whose camera make disagrees with the source JPEG. The target must keep the value re-extracted from the actual file, proving the cache is not treated as authoritative.
+
+Classification: **Intentional cache rebuild / Transform**.
+
+## Custom file types
 
 Coppermine's `filetypes` registry is not just a hard-coded list.
 

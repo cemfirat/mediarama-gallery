@@ -178,6 +178,11 @@ CREATE TABLE cpg_favpics (
   user_favpics TEXT NOT NULL
 );
 
+CREATE TABLE cpg_exif (
+  pid INT NOT NULL PRIMARY KEY,
+  exifData TEXT NOT NULL
+);
+
 CREATE TABLE cpg_config (
   name VARCHAR(40) NOT NULL PRIMARY KEY,
   value VARCHAR(255) NOT NULL DEFAULT ''
@@ -309,6 +314,12 @@ INSERT INTO cpg_vote_stats (
 
 INSERT INTO cpg_favpics (user_id, user_favpics)
 VALUES (1, 'YToxOntpOjA7aToxMDA7fQ==');
+
+-- Deliberately stale derived Coppermine EXIF cache. The source JPEG written by
+-- CI contains Make="Fixture Camera Co"; migration must re-extract the file
+-- and must not trust this cached historical value.
+INSERT INTO cpg_exif (pid, exifData)
+VALUES (100, 'a:1:{s:4:"Make";s:16:"Stale Cache Make";}');
 
 INSERT INTO cpg_languages (
   lang_id, english_name, native_name, flag, abbr, available, enabled, complete
