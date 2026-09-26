@@ -251,3 +251,28 @@ The Coppermine migration preflight should eventually report at least:
 - secrets/state that will explicitly not be copied.
 
 This is preferable to silently ignoring a heavily customized installation.
+
+## Explicit migration allowlist
+
+Mediarama does **not** copy the Coppermine `config` table into target configuration.
+
+Only source values with a dedicated migration interpretation are allowed to influence the importer:
+
+| Source key | Migration use | Target treatment |
+| --- | --- | --- |
+| `bridge_enable` | determine whether local Coppermine users are authoritative | enabled bridging blocks migration |
+| `allow_private_albums` | interpret effective album privacy | conflicting disabled/private state blocks migration |
+| `keyword_separator` | split source picture keywords correctly | used only during tag import; Coppermine's stored `%20` value is decoded to a space |
+| `old_style_rating` | interpret detailed source rating scale | used only during rating normalization |
+| `rating_stars_amount` | interpret detailed source rating scale | validated against Coppermine's documented 1..20 range and normalized to Mediarama's five-star model |
+| `lang` | validate the source installation's default language identity | not copied as a Mediarama runtime setting |
+
+Language data is handled separately through the source `languages` table and `users.user_language`:
+
+- `user_language` is a Coppermine language ID such as `english` or `german`;
+- the importer resolves it through `languages.lang_id`;
+- `languages.abbr` becomes the Mediarama user locale, for example `english → en` and `german → de`;
+- missing/unavailable language definitions or empty abbreviations block migration rather than storing a Coppermine filename-style language ID as a target locale.
+
+No other Coppermine config key is imported automatically. Presentation, theme, SMTP, cookie/session, executable paths, filesystem modes, plugin/runtime switches, language autodetection and similar source-runtime settings remain Mediarama product/operations configuration unless a future dedicated migration rule explicitly adds them to this allowlist.
+

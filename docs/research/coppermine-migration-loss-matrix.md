@@ -26,14 +26,14 @@ Each source concept must end in one of these states:
 | `categories` | hierarchy, ownership, structural grouping, explicit cover | importer preserves hierarchy/ownership and positive explicit cover PIDs | Transform | real-gallery tests remain |
 | `categorymap` | groups allowed to create albums in categories | imported to category collection `collection.create_child` ACL entries | Transform | real-gallery permission validation remains |
 | `comments` | comments, author, moderation/spam | registered/guest authors, body, timestamp and moderation/spam state migrate; historical IP is deliberately excluded | Transform + privacy reduction | real-gallery validation remains |
-| `config` | large installation-wide behavior/config surface | only selected values read | Transform | build explicit allowlist of migratable behavior; never bulk-copy |
+| `config` | large installation-wide behavior/config surface | explicit migration allowlist only; no bulk copy | Transform + intentional config omission | dedicated rules cover bridge/private-album semantics, keyword parsing, rating normalization and source-language validation; all other keys remain target product/operations policy unless explicitly added |
 | `dict` | derived keyword dictionary | not migrated; source picture keywords are normalized into tags/media_tags | Intentional omission / rebuild | none: Coppermine itself rebuilds this table from `pictures.keywords` |
 | `ecards` | optional sent-e-card log with sender/recipient identity/contact data, IP and encoded payload | not migrated into Mediarama product storage | Intentional omission | separate restricted archive/export only if a specific installation has a retention obligation |
 | `exif` | persisted EXIF blob per picture | source file metadata currently re-extracted instead | Transform | compare stored EXIF vs source-file metadata; preserve source-only fields if necessary |
 | `favpics` | authenticated-user favorites serialized in source | decoded for mapped users/pictures and imported to normalized favorites | Transform | anonymous browser-local favorites remain an intentional limitation |
 | `filetypes` | extension→MIME→content type→player registry | not migrated as runtime policy; actual source files are content-inspected and unsupported real MIME/decoder states block preflight | Intentional config omission + content transform | registry remains audit evidence only; target support is determined from real bytes and Mediarama policy |
 | `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | raw rows are intentionally not migrated; aggregate `pictures.hits` / `albums.alb_hits` are preserved separately as `view_count` | Intentional omission of raw telemetry + Direct aggregate preservation | retain product counters without copying privacy-heavy network/client history |
-| `languages` | installed/available/enabled language definitions | not migrated | likely Transform / configuration | map only installation language preferences, not runtime implementation |
+| `languages` | installed/available/enabled language definitions | required as migration lookup; user language IDs map through `abbr` to target locale | Transform | runtime language files, autodetection/enabled-list behavior and display labels are not copied as target configuration |
 | `pictures` | media records, metadata, ownership, approval, counters, custom fields, user-gallery icon, source-root selector | core media import preserves aggregate `hits` as media `view_count`; non-empty `user1..4`, non-zero `galleryicon` and non-zero `url_prefix` block preflight | Transform + explicit blockers | design target custom-field/user-gallery representation models; multi-root source addressing requires an explicit source resolver |
 | `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
 | `sessions` | active login/remember-me runtime state | not migrated | Intentional omission | legacy authentication/session credentials expire with Coppermine; users establish new Mediarama auth state |
@@ -104,6 +104,25 @@ Mediarama must not infer import support merely from filename extension. It shoul
 The importer now maps these rows to collection-scoped `collection.create_child` allow rules, with CI coverage for the source category/group mapping.
 
 Classification: **Transform**. Real-gallery permission validation remains, but this is no longer an unimplemented migration gap.
+
+## Configuration and language allowlist
+
+The migration does not reproduce Coppermine's installation-wide config table.
+
+Only explicitly referenced source settings may influence interpretation:
+
+- `bridge_enable`;
+- `allow_private_albums`;
+- `keyword_separator`;
+- `old_style_rating`;
+- `rating_stars_amount`;
+- `lang` for source-language validation.
+
+`users.user_language` is data, not a raw target config value. It is resolved through `languages.lang_id` to `languages.abbr` before being stored as the Mediarama user locale.
+
+This also fixes a source-specific encoding rule: Coppermine stores a space keyword separator as `%20`; migration decodes it before splitting keywords.
+
+Everything else in the source configuration remains non-portable runtime/product policy unless a dedicated rule is added later. This prevents SMTP credentials, cookie/session settings, theme names, executable paths, old filesystem modes or UI-layout switches from leaking into Mediarama configuration.
 
 ## User-group policy semantics
 

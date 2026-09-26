@@ -81,6 +81,7 @@ SQL,
         $source = $this->sourceFactory->create();
         $cursor = (int) ($this->checkpoints->get('coppermine', 'users') ?? '0');
         $table = $source->quoteIdentifier($this->prefix->table('users'));
+        $languageLocales = $this->languageLocales($source);
 
         $rows = $source->fetchAllAssociative(
             sprintf(
@@ -120,7 +121,7 @@ SQL,
                     'email' => trim((string) $row['user_email']) !== '' ? (string) $row['user_email'] : null,
                     'display_name' => (string) $row['user_name'],
                     'status' => (string) $row['user_active'] === 'YES' ? 'password_reset_required' : 'inactive',
-                    'locale' => trim((string) $row['user_language']) !== '' ? (string) $row['user_language'] : null,
+                    'locale' => $this->localeForLanguage((string) $row['user_language'], $languageLocales),
                     'created_at' => $this->safeDate((string) $row['user_regdate'])->format(DATE_ATOM),
                     'last_login_at' => $this->nullableDate((string) $row['user_lastvisit'])?->format(DATE_ATOM),
                 ],
@@ -186,6 +187,45 @@ SQL,
         }
 
         return $permissions;
+    }
+
+    /** @return array<string,string> */
+    private function languageLocales(Connection $source): array
+    {
+        $table = $source->quoteIdentifier($this->prefix->table('languages'));
+        $rows = $source->fetchAllAssociative(
+            'SELECT lang_id, abbr FROM '.$table.' ORDER BY lang_id ASC',
+        );
+
+        $locales = [];
+        foreach ($rows as $row) {
+            $language = trim((string) $row['lang_id']);
+            $locale = trim((string) $row['abbr']);
+
+            if ($language !== '' && $locale !== '') {
+                $locales[$language] = $locale;
+            }
+        }
+
+        return $locales;
+    }
+
+    /** @param array<string,string> $languageLocales */
+    private function localeForLanguage(string $language, array $languageLocales): ?string
+    {
+        $language = trim($language);
+        if ($language === '') {
+            return null;
+        }
+
+        if (!isset($languageLocales[$language])) {
+            throw new \RuntimeException(sprintf(
+                'Coppermine language "%s" has no locale mapping in the languages table.',
+                $language,
+            ));
+        }
+
+        return $languageLocales[$language];
     }
 
     /** @return list<string> */

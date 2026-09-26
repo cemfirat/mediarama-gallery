@@ -138,6 +138,26 @@ Useful configuration semantics to preserve or reconsider:
 
 Mediarama should use a modern translation catalog system and locale negotiation rather than Coppermine-compatible PHP language globals.
 
+### Verified migration mapping
+
+Coppermine persists a user's preference as the language **ID** used for its PHP language file, not necessarily as an ISO locale. Core registration stores the configured `lang` value and login can later persist the selected `$USER['lang']` value into `users.user_language`.
+
+Therefore copying `user_language` directly into Mediarama `users.locale` is incorrect for ordinary values such as `english` or `german`.
+
+The migration now resolves:
+
+`users.user_language → languages.lang_id → languages.abbr → users.locale`
+
+Examples covered by CI:
+
+- `english → en`
+- `german → de`
+
+The source `languages` table is required for migration inspection. A populated user language or configured default language that cannot resolve to an available row with a non-empty abbreviation blocks migration.
+
+The source enabled-language list, custom display names and `language_autodetect` behavior are not copied as Mediarama runtime configuration. They describe Coppermine's UI/runtime locale selection rather than portable gallery content.
+
+
 ## Remaining identity audit
 
 Still required:

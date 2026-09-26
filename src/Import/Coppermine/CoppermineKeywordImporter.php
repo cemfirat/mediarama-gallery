@@ -29,7 +29,9 @@ final readonly class CoppermineKeywordImporter
             'SELECT value FROM '.$config." WHERE name = 'keyword_separator'",
         ) ?: ';');
 
-        if ($separator === '') {
+        if ($separator === '%20') {
+            $separator = ' ';
+        } elseif ($separator === '') {
             $separator = ';';
         }
 

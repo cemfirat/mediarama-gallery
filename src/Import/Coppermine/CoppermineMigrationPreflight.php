@@ -26,6 +26,7 @@ final readonly class CoppermineMigrationPreflight
     {
         $source = $this->sourceFactory->create();
         $blockers = array_merge(
+            $this->configurationAndLanguageBlockers($source),
             $this->duplicateEmailBlockers($source),
             $this->identityGroupPolicyBlockers($source),
             $this->bridgeBlockers($source),
@@ -41,6 +42,117 @@ final readonly class CoppermineMigrationPreflight
         );
 
         return new CoppermineMigrationPreflightReport($blockers);
+    }
+
+    /** @return list<string> */
+    private function configurationAndLanguageBlockers(Connection $source): array
+    {
+        $configTable = $source->quoteIdentifier($this->prefix->table('config'));
+        $rows = $source->fetchAllAssociative(
+            "SELECT name, value FROM ".$configTable." WHERE name IN ('keyword_separator', 'old_style_rating', 'rating_stars_amount', 'lang')",
+        );
+
+        $config = [];
+        foreach ($rows as $row) {
+            $config[(string) $row['name']] = (string) $row['value'];
+        }
+
+        $blockers = [];
+        foreach (['keyword_separator', 'old_style_rating', 'rating_stars_amount', 'lang'] as $required) {
+            if (!array_key_exists($required, $config)) {
+                $blockers[] = sprintf(
+                    'Required Coppermine config key "%s" is missing; migration interpretation would be ambiguous.',
+                    $required,
+                );
+            }
+        }
+
+        if ($blockers !== []) {
+            return array_slice($blockers, 0, self::DETAIL_LIMIT);
+        }
+
+        if ($config['keyword_separator'] === '') {
+            $blockers[] = 'Coppermine keyword_separator is empty; picture keywords cannot be split safely.';
+        }
+
+        if (!in_array($config['old_style_rating'], ['0', '1'], true)) {
+            $blockers[] = sprintf(
+                'Coppermine old_style_rating has unsupported value "%s"; expected 0 or 1.',
+                $config['old_style_rating'],
+            );
+        }
+
+        if (!ctype_digit($config['rating_stars_amount'])) {
+            $blockers[] = sprintf(
+                'Coppermine rating_stars_amount has unsupported value "%s"; expected an integer from 1 to 20.',
+                $config['rating_stars_amount'],
+            );
+        } else {
+            $stars = (int) $config['rating_stars_amount'];
+            if ($stars < 1 || $stars > 20) {
+                $blockers[] = sprintf(
+                    'Coppermine rating_stars_amount=%d is outside the supported source range 1..20.',
+                    $stars,
+                );
+            }
+        }
+
+        $languagesTable = $source->quoteIdentifier($this->prefix->table('languages'));
+        $languageRows = $source->fetchAllAssociative(
+            'SELECT lang_id, abbr, available FROM '.$languagesTable.' ORDER BY lang_id ASC',
+        );
+
+        /** @var array<string, array{abbr:string,available:string}> $languages */
+        $languages = [];
+        foreach ($languageRows as $row) {
+            $languages[(string) $row['lang_id']] = [
+                'abbr' => trim((string) $row['abbr']),
+                'available' => strtoupper(trim((string) $row['available'])),
+            ];
+        }
+
+        $defaultLanguage = trim($config['lang']);
+        if ($defaultLanguage === '' || !isset($languages[$defaultLanguage])) {
+            $blockers[] = sprintf(
+                'Coppermine default language "%s" does not resolve through the languages table.',
+                $defaultLanguage,
+            );
+        } elseif ($languages[$defaultLanguage]['abbr'] === '' || $languages[$defaultLanguage]['available'] !== 'YES') {
+            $blockers[] = sprintf(
+                'Coppermine default language "%s" has no available non-empty locale abbreviation.',
+                $defaultLanguage,
+            );
+        }
+
+        $usersTable = $source->quoteIdentifier($this->prefix->table('users'));
+        $userRows = $source->fetchAllAssociative(sprintf(
+            "SELECT user_id, user_language FROM %s WHERE TRIM(user_language) <> '' ORDER BY user_id ASC LIMIT %d",
+            $usersTable,
+            self::DETAIL_LIMIT,
+        ));
+
+        foreach ($userRows as $row) {
+            $language = trim((string) $row['user_language']);
+            if (!isset($languages[$language])) {
+                $blockers[] = sprintf(
+                    'User %s language "%s" does not resolve through the Coppermine languages table.',
+                    (string) $row['user_id'],
+                    $language,
+                );
+            } elseif ($languages[$language]['abbr'] === '' || $languages[$language]['available'] !== 'YES') {
+                $blockers[] = sprintf(
+                    'User %s language "%s" has no available non-empty locale abbreviation.',
+                    (string) $row['user_id'],
+                    $language,
+                );
+            }
+
+            if (count($blockers) >= self::DETAIL_LIMIT) {
+                return array_slice($blockers, 0, self::DETAIL_LIMIT);
+            }
+        }
+
+        return array_slice($blockers, 0, self::DETAIL_LIMIT);
     }
 
     /** @return list<string> */

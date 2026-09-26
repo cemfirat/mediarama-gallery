@@ -245,6 +245,8 @@ jobs:
               'aggregate-only rating' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_rating_aggregates a JOIN media_assets m ON m.id = a.media_id WHERE m.original_filename = 'sample2.jpg' AND a.average_5 = 3 AND a.vote_count = 2") === 1,
               'no synthesized individual rating' => (int) $db->fetchOne("SELECT COUNT(*) FROM ratings r JOIN media_assets m ON m.id = r.media_id WHERE m.original_filename = 'sample2.jpg'") === 0,
               'reset-required user' => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = 'fixture-user' AND status = 'password_reset_required'") === 1,
+              'english language id maps to locale' => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = 'fixture-user' AND locale = 'en'") === 1,
+              'german language id maps to locale' => (int) $db->fetchOne("SELECT COUNT(*) FROM users WHERE username = 'viewer-user' AND locale = 'de'") === 1,
               'empty async queue' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,
           ];
 
@@ -290,6 +292,30 @@ jobs:
 
             cat "$output"
           }
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_language = 'missing-language' WHERE user_id = 1;"
+          assert_inspect_blocked missing-user-language 'User 1 language "missing-language" does not resolve through the Coppermine languages table.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_language = 'english' WHERE user_id = 1;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '' WHERE name = 'keyword_separator';"
+          assert_inspect_blocked empty-keyword-separator 'Coppermine keyword_separator is empty; picture keywords cannot be split safely.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = ';' WHERE name = 'keyword_separator';"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '21' WHERE name = 'rating_stars_amount';"
+          assert_inspect_blocked invalid-rating-stars 'Coppermine rating_stars_amount=21 is outside the supported source range 1..20.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = '5' WHERE name = 'rating_stars_amount';"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = 'missing-language' WHERE name = 'lang';"
+          assert_inspect_blocked missing-default-language 'Coppermine default language "missing-language" does not resolve through the languages table.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_config SET value = 'english' WHERE name = 'lang';"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "INSERT INTO cpg_users (user_id, user_group, user_active, user_name, user_lastvisit, user_regdate, user_email, user_profile6) VALUES (99, 3, 'YES', 'duplicate-user', '2024-02-03 10:00:00', '2024-01-03 10:00:00', 'fixture@example.test', '');"
@@ -460,7 +486,7 @@ jobs:
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "DROP DATABASE IF EXISTS coppermine_prefix; CREATE DATABASE coppermine_prefix CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
           sed 's/cpg_/odd42__/g' tests/Fixtures/Coppermine/1.6-minimal.sql             | mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine_prefix
-          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine_prefix             -e "UPDATE odd42__config SET value = '|' WHERE name = 'keyword_separator'; UPDATE odd42__config SET value = '10' WHERE name = 'rating_stars_amount'; UPDATE odd42__pictures SET keywords = 'summer|vacation' WHERE pid = 100; UPDATE odd42__vote_stats SET rating = 8 WHERE sid = 300;"
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine_prefix             -e "UPDATE odd42__config SET value = '%20' WHERE name = 'keyword_separator'; UPDATE odd42__config SET value = '10' WHERE name = 'rating_stars_amount'; UPDATE odd42__pictures SET keywords = 'summer vacation' WHERE pid = 100; UPDATE odd42__vote_stats SET rating = 8 WHERE sid = 300;"
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root             -e "GRANT SELECT ON coppermine_prefix.* TO 'readonly'@'%'; FLUSH PRIVILEGES;"
 
           export DATABASE_URL="postgresql://mediarama:mediarama@127.0.0.1:5432/mediarama_prefix?serverVersion=18&charset=utf8"
@@ -488,7 +514,7 @@ jobs:
           $checks = [
               'completed prefixed import' => (int) $db->fetchOne("SELECT COUNT(*) FROM import_runs WHERE source_type = 'coppermine' AND status = 'completed'") === 1,
               'prefixed media' => (int) $db->fetchOne('SELECT COUNT(*) FROM media_assets') === 4,
-              'custom keyword separator' => (int) $db->fetchOne("SELECT COUNT(*) FROM tags WHERE slug IN ('summer', 'vacation')") === 2,
+              'encoded space keyword separator' => (int) $db->fetchOne("SELECT COUNT(*) FROM tags WHERE slug IN ('summer', 'vacation')") === 2,
               'custom keyword links' => (int) $db->fetchOne("SELECT COUNT(*) FROM media_tags mt JOIN media_assets m ON m.id = mt.media_id JOIN tags t ON t.id = mt.tag_id WHERE m.original_filename = 'sample.jpg' AND t.slug IN ('summer', 'vacation')") === 2,
               'ten-star rating normalization' => (int) $db->fetchOne('SELECT COUNT(*) FROM ratings WHERE value = 4') === 1,
               'prefixed async queue drained' => (int) $db->fetchOne("SELECT COUNT(*) FROM messenger_messages WHERE queue_name = 'async'") === 0,

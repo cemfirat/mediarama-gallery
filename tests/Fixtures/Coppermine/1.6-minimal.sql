@@ -183,6 +183,18 @@ CREATE TABLE cpg_config (
   value VARCHAR(255) NOT NULL DEFAULT ''
 );
 
+CREATE TABLE cpg_languages (
+  lang_id VARCHAR(40) NOT NULL PRIMARY KEY,
+  english_name VARCHAR(70) DEFAULT NULL,
+  native_name VARCHAR(70) DEFAULT NULL,
+  custom_name VARCHAR(70) DEFAULT NULL,
+  flag VARCHAR(15) DEFAULT NULL,
+  abbr VARCHAR(15) NOT NULL DEFAULT '',
+  available ENUM('YES','NO') NOT NULL DEFAULT 'NO',
+  enabled ENUM('YES','NO') NOT NULL DEFAULT 'NO',
+  complete ENUM('YES','NO') NOT NULL DEFAULT 'NO'
+);
+
 INSERT INTO cpg_filetypes (extension, mime, content, player) VALUES
   ('jpg', 'image/jpg', 'image', ''),
   ('jpeg', 'image/jpeg', 'image', ''),
@@ -201,11 +213,11 @@ INSERT INTO cpg_users (
 ) VALUES
 (
   1, 3, 'YES', 'fixture-user', '2024-02-01 10:00:00', '2024-01-01 10:00:00',
-  'fixture@example.test', 'YES', '', 'en'
+  'fixture@example.test', 'YES', '', 'english'
 ),
 (
   2, 3, 'YES', 'viewer-user', '2024-02-02 10:00:00', '2024-01-02 10:00:00',
-  'viewer@example.test', 'YES', '', 'en'
+  'viewer@example.test', 'YES', '', 'german'
 );
 
 INSERT INTO cpg_categories (
@@ -298,9 +310,16 @@ INSERT INTO cpg_vote_stats (
 INSERT INTO cpg_favpics (user_id, user_favpics)
 VALUES (1, 'YToxOntpOjA7aToxMDA7fQ==');
 
+INSERT INTO cpg_languages (
+  lang_id, english_name, native_name, flag, abbr, available, enabled, complete
+) VALUES
+  ('english', 'English (US)', 'English (US)', 'us', 'en', 'YES', 'YES', 'YES'),
+  ('german', 'German (informal)', 'Deutsch (Du)', 'de', 'de', 'YES', 'YES', 'YES');
+
 INSERT INTO cpg_config (name, value) VALUES
   ('bridge_enable', '0'),
   ('allow_private_albums', '1'),
   ('keyword_separator', ';'),
   ('old_style_rating', '0'),
-  ('rating_stars_amount', '5');
+  ('rating_stars_amount', '5'),
+  ('lang', 'english');
