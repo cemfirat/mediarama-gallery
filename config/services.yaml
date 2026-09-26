@@ -84,6 +84,9 @@ services:
     Mediarama\Upload\Application\UploadFinalizationRepository:
         alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadFinalizationRepository
 
+    Mediarama\Upload\Application\UploadFinalizationCriticalSection:
+        alias: Mediarama\Upload\Infrastructure\Persistence\DbalUploadFinalizationCriticalSection
+
     Mediarama\Upload\Application\UploadContentPolicy:
         arguments:
             $allowedMimeTypes:
