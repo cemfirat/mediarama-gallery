@@ -106,11 +106,20 @@ jobs:
 
       - name: Build UIkit frontend
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
           test -s public/build/app.css
           test -s public/build/uikit.min.js
           test -s public/build/uikit-icons.min.js
+
+      - name: Verify dependency install is reproducible
+        run: |
+          STATUS="$(git status --porcelain -- composer.lock symfony.lock package-lock.json package.json .env config)"
+          if [ -n "$STATUS" ]; then
+            echo "Dependency installation changed committed project state:"
+            printf '%s\n' "$STATUS"
+            exit 1
+          fi
 
       - name: Lint PHP
         run: find src tests migrations -name '*.php' -print0 | xargs -0 -n1 php -l
