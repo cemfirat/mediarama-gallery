@@ -34,12 +34,12 @@ Each source concept must end in one of these states:
 | `filetypes` | extension→MIME→content type→player registry | not migrated | Transform | distinguish built-in defaults from site customizations; map relevant custom media policies |
 | `hit_stats` | detailed views incl. IP, search phrase, referrer, browser, OS, user | not migrated | unresolved, likely Historical or Intentional omission | decide aggregate preservation vs privacy-safe discard |
 | `languages` | installed/available/enabled language definitions | not migrated | likely Transform / configuration | map only installation language preferences, not runtime implementation |
-| `pictures` | media records, metadata, ownership, approval, counters | importer exists | Transform | non-image/custom type and metadata-heavy real tests |
+| `pictures` | media records, metadata, ownership, approval, counters, custom fields, user-gallery icon, source-root selector | core media import exists; non-empty `user1..4`, non-zero `galleryicon` and non-zero `url_prefix` now block preflight | Transform + explicit blockers | design target custom-field/user-gallery representation models; multi-root source addressing requires an explicit source resolver; aggregate counters remain unresolved |
 | `plugins` | installed plugin registry, enablement and priority | registry itself is not migrated; any installed row blocks preflight | Intentional omission as runtime registry + plugin-data blocker | audit/waive each installed plugin and any plugin-owned files/tables before core migration |
 | `sessions` | active login sessions | not migrated | Intentional omission | document security rationale; never migrate sessions |
 | `temp_messages` | transient cross-page messages | not migrated | Intentional omission | document as ephemeral |
 | `usergroups` | global capabilities, quotas and approval flags | partially migrated | Transform | quota + approval semantics still incomplete |
-| `users` | local identities, profiles, activation/status | importer exists | Transform | custom profiles, bridged users, bans, activation edge cases |
+| `users` | local identities, profiles, activation/status | core identity import exists; non-empty `user_profile1..6` now blocks preflight | Transform + explicit blockers | design profile-field target mapping; activation tokens are intentionally not reusable; bridged identities remain unsupported |
 | `votes` | basic per-voter anti-repeat records without rating value | not reconstructed individually | Historical / omit detail | aggregate/detailed vote strategy already documented |
 | `vote_stats` | detailed ratings + IP/referrer/browser/OS/user | user-linked rating values partly migrated | Transform + privacy reduction | retain rating value/identity when recoverable; deliberately omit network/client telemetry |
 
@@ -147,6 +147,26 @@ For each one, the final migration policy must document:
 - whether an aggregate is sufficient;
 - whether the field should be intentionally discarded.
 
+
+
+## Unmodeled user-defined and source-address data
+
+Several fields are genuine installation/user data rather than harmless Coppermine implementation residue:
+
+- `pictures.user1..4` are administrator-labelled custom fields exposed in media edit/upload forms;
+- `users.user_profile1..6` are configurable user profile fields;
+- `pictures.galleryicon` identifies a selected picture used to represent a user's Coppermine gallery;
+- `pictures.url_prefix` participates in Coppermine's multi-server/source-root file addressing.
+
+The current Mediarama model has no equivalent profile/custom-field or user-gallery-icon target, and the importer has one explicit local albums root rather than Coppermine's historical URL-prefix routing.
+
+Migration policy: **unsupported-and-block until a deliberate target mapping exists**.
+
+Preflight reports source IDs and populated field names only. It does not print the field values. Any non-empty custom/profile field, non-zero `galleryicon`, or non-zero `url_prefix` stops migration before writes so these values cannot disappear silently or cause the importer to read the wrong source object.
+
+### Source security tokens
+
+Coppermine activation keys and browser/guest unlock tokens are credentials for the old runtime, not portable business data. They are deliberately not reused as Mediarama credentials. User identities already require Mediarama password reset/re-establishment; source activation/unlock tokens must expire with the source application rather than being copied forward.
 
 ## Explicit collection-cover migration
 

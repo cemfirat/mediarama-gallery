@@ -34,6 +34,7 @@ final readonly class CoppermineMigrationPreflight
             $this->moderatorGroupBlockers($source),
             $this->categoryHierarchyBlockers($source),
             $this->coverReferenceBlockers($source),
+            $this->unmodeledSourceDataBlockers($source),
             $this->sourceMediaBlockers($source),
         );
 
@@ -377,6 +378,106 @@ SQL,
                 if (count($blockers) >= self::DETAIL_LIMIT) {
                     return $blockers;
                 }
+            }
+        }
+
+        return $blockers;
+    }
+
+    /** @return list<string> */
+    private function unmodeledSourceDataBlockers(Connection $source): array
+    {
+        $blockers = [];
+
+        $pictures = $source->quoteIdentifier($this->prefix->table('pictures'));
+        $pictureRows = $source->fetchAllAssociative(sprintf(
+            <<<'SQL'
+SELECT pid, user1, user2, user3, user4, url_prefix, galleryicon
+FROM %s
+WHERE TRIM(user1) <> ''
+   OR TRIM(user2) <> ''
+   OR TRIM(user3) <> ''
+   OR TRIM(user4) <> ''
+   OR url_prefix <> 0
+   OR galleryicon <> 0
+ORDER BY pid ASC
+LIMIT %d
+SQL,
+            $pictures,
+            self::DETAIL_LIMIT,
+        ));
+
+        foreach ($pictureRows as $row) {
+            $customFields = [];
+            foreach (['user1', 'user2', 'user3', 'user4'] as $field) {
+                if (trim((string) $row[$field]) !== '') {
+                    $customFields[] = $field;
+                }
+            }
+
+            if ($customFields !== []) {
+                $blockers[] = sprintf(
+                    'Picture %s has populated Coppermine custom media field(s): %s; no explicit Mediarama field mapping exists yet.',
+                    (string) $row['pid'],
+                    implode(', ', $customFields),
+                );
+            }
+
+            if ((int) $row['url_prefix'] !== 0) {
+                $blockers[] = sprintf(
+                    'Picture %s uses Coppermine url_prefix=%d; the current importer supports only the primary local source root and must not guess a multi-server path.',
+                    (string) $row['pid'],
+                    (int) $row['url_prefix'],
+                );
+            }
+
+            if ((int) $row['galleryicon'] !== 0) {
+                $blockers[] = sprintf(
+                    'Picture %s is marked as a Coppermine user-gallery icon; Mediarama has no equivalent user-gallery representation mapping yet.',
+                    (string) $row['pid'],
+                );
+            }
+
+            if (count($blockers) >= self::DETAIL_LIMIT) {
+                return array_slice($blockers, 0, self::DETAIL_LIMIT);
+            }
+        }
+
+        $users = $source->quoteIdentifier($this->prefix->table('users'));
+        $userRows = $source->fetchAllAssociative(sprintf(
+            <<<'SQL'
+SELECT user_id, user_profile1, user_profile2, user_profile3,
+       user_profile4, user_profile5, user_profile6
+FROM %s
+WHERE TRIM(user_profile1) <> ''
+   OR TRIM(user_profile2) <> ''
+   OR TRIM(user_profile3) <> ''
+   OR TRIM(user_profile4) <> ''
+   OR TRIM(user_profile5) <> ''
+   OR TRIM(user_profile6) <> ''
+ORDER BY user_id ASC
+LIMIT %d
+SQL,
+            $users,
+            self::DETAIL_LIMIT,
+        ));
+
+        foreach ($userRows as $row) {
+            $fields = [];
+            foreach (['user_profile1', 'user_profile2', 'user_profile3', 'user_profile4', 'user_profile5', 'user_profile6'] as $field) {
+                if (trim((string) $row[$field]) !== '') {
+                    $fields[] = $field;
+                }
+            }
+
+            $blockers[] = sprintf(
+                'User %s has populated Coppermine profile field(s): %s; no explicit Mediarama profile-field mapping exists yet.',
+                (string) $row['user_id'],
+                implode(', ', $fields),
+            );
+
+            if (count($blockers) >= self::DETAIL_LIMIT) {
+                return array_slice($blockers, 0, self::DETAIL_LIMIT);
             }
         }
 

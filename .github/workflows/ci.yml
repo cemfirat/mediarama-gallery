@@ -273,6 +273,30 @@ jobs:
             -e "DELETE FROM cpg_users WHERE user_id = 99;"
 
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET user1 = 'fixture custom value' WHERE pid = 100;"
+          assert_inspect_blocked media-custom-field 'Picture 100 has populated Coppermine custom media field(s): user1; no explicit Mediarama field mapping exists yet.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET user1 = '' WHERE pid = 100;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_profile1 = 'fixture profile value' WHERE user_id = 1;"
+          assert_inspect_blocked user-profile-field 'User 1 has populated Coppermine profile field(s): user_profile1; no explicit Mediarama profile-field mapping exists yet.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_users SET user_profile1 = '' WHERE user_id = 1;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET url_prefix = 1 WHERE pid = 100;"
+          assert_inspect_blocked multi-server-source 'Picture 100 uses Coppermine url_prefix=1; the current importer supports only the primary local source root and must not guess a multi-server path.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET url_prefix = 0 WHERE pid = 100;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET galleryicon = 100 WHERE pid = 100;"
+          assert_inspect_blocked user-gallery-icon 'Picture 100 is marked as a Coppermine user-gallery icon; Mediarama has no equivalent user-gallery representation mapping yet.'
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET galleryicon = 0 WHERE pid = 100;"
+
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "UPDATE cpg_config SET value = '1' WHERE name = 'bridge_enable';"
           assert_inspect_blocked bridge-enabled 'Coppermine bridging is enabled'
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
