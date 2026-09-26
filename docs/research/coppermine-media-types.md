@@ -1,6 +1,6 @@
 # Coppermine media-type model audit
 
-Status: **active audit**
+Status: **migration policy resolved and CI-covered**
 Date: 2026-09-25
 Tracking: #11
 
@@ -88,25 +88,29 @@ Mediarama should retain its stronger approach:
 - never execute active media/document content;
 - generated public derivatives are separate from originals.
 
-## Migration implication
+## Migration policy
 
-The source `filetypes` table is mutable installation data.
+The source `filetypes` table is mutable **Coppermine runtime configuration**, not authoritative media truth.
 
-Therefore migration preflight must compare:
+Mediarama therefore does **not** migrate or trust the registry as its target allowlist.
 
-- actual file extensions present in `pictures`;
-- source registry rows;
-- Mediarama content policy;
-- decoder/prober support.
+For every actual source asset:
 
-Custom source file types must be reported explicitly.
+1. locate the real original file;
+2. inspect its real content/MIME;
+3. apply the Mediarama allowlist;
+4. run structural/decoder validation where supported;
+5. block migration before writes when the actual media cannot be accepted safely.
 
-A useful migration report should classify every encountered type:
+Consequences:
 
-- fully supported and processed;
-- stored/downloadable but not previewable;
-- migration-only legacy;
-- rejected/unsupported.
+- a custom source extension may migrate when the real bytes are a supported Mediarama type;
+- a Coppermine registry row cannot whitelist deceptive or unsupported real content;
+- Coppermine `content` and legacy `player` choices are not target runtime settings;
+- generic document formats remain unsupported until Mediarama deliberately adds a document model/policy;
+- source registry MIME values and 1.7 `pictures.mime`/`pictures.ftype` remain audit evidence only.
+
+CI covers both directions: a custom `.foo` row classified by Coppermine as a document still passes preflight when its bytes are a valid JPEG, while a `.jpg` that the source registry claims is an image is rejected when its actual MIME is `text/plain`.
 
 ## 1.7 media columns
 

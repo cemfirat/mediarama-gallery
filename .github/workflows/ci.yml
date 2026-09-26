@@ -278,6 +278,19 @@ jobs:
             grep -F "$expected" "$output"
           }
 
+          assert_inspect_clean() {
+            label="$1"
+            output="/tmp/coppermine-preflight-${label}.txt"
+
+            if ! php bin/console mediarama:import:coppermine:inspect >"$output" 2>&1; then
+              cat "$output"
+              echo "Expected preflight inspection to succeed for: $label"
+              exit 1
+            fi
+
+            cat "$output"
+          }
+
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             -e "INSERT INTO cpg_users (user_id, user_group, user_active, user_name, user_lastvisit, user_regdate, user_email, user_profile6) VALUES (99, 3, 'YES', 'duplicate-user', '2024-02-03 10:00:00', '2024-01-03 10:00:00', 'fixture@example.test', '');"
           assert_inspect_blocked duplicate-email 'Duplicate normalized email address "fixture@example.test" is used by 2 source users'
@@ -414,10 +427,22 @@ jobs:
           assert_inspect_blocked missing-original 'Picture 100 original file is missing or unreadable.'
           mv /tmp/coppermine-albums/userpics/sample.jpg.missing /tmp/coppermine-albums/userpics/sample.jpg
 
+          cp /tmp/coppermine-albums/userpics/sample2.jpg /tmp/coppermine-albums/userpics/sample.foo
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "INSERT INTO cpg_filetypes (extension, mime, content, player) VALUES ('foo', 'application/x-fixture', 'document', ''); UPDATE cpg_pictures SET filename = 'sample.foo' WHERE pid = 101;"
+          assert_inspect_clean custom-extension-safe-content
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_pictures SET filename = 'sample2.jpg' WHERE pid = 101; DELETE FROM cpg_filetypes WHERE extension = 'foo';"
+          rm /tmp/coppermine-albums/userpics/sample.foo
+
           cp /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine-albums/userpics/sample.jpg.good
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_filetypes SET mime = 'image/jpeg', content = 'image', player = 'HTMLV' WHERE extension = 'jpg';"
           printf 'not a jpeg\n' > /tmp/coppermine-albums/userpics/sample.jpg
           assert_inspect_blocked deceptive-extension 'Picture 100 source media is not importable: MIME type "text/plain" is not allowed for upload.'
           mv /tmp/coppermine-albums/userpics/sample.jpg.good /tmp/coppermine-albums/userpics/sample.jpg
+          mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
+            -e "UPDATE cpg_filetypes SET mime = 'image/jpg', content = 'image', player = '' WHERE extension = 'jpg';"
 
           cp /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine-albums/userpics/sample.jpg.good
           head -c 100 /tmp/coppermine-albums/userpics/sample.jpg.good > /tmp/coppermine-albums/userpics/sample.jpg

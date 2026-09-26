@@ -38,6 +38,14 @@ CREATE TABLE cpg_plugins (
   UNIQUE KEY uniq_plugin_path (path)
 );
 
+CREATE TABLE cpg_filetypes (
+  extension CHAR(7) NOT NULL DEFAULT '',
+  mime CHAR(254) DEFAULT NULL,
+  content CHAR(15) DEFAULT NULL,
+  player VARCHAR(5) DEFAULT NULL,
+  PRIMARY KEY (extension)
+);
+
 CREATE TABLE cpg_users (
   user_id INT NOT NULL PRIMARY KEY,
   user_group INT NOT NULL DEFAULT 2,
@@ -174,6 +182,12 @@ CREATE TABLE cpg_config (
   name VARCHAR(40) NOT NULL PRIMARY KEY,
   value VARCHAR(255) NOT NULL DEFAULT ''
 );
+
+INSERT INTO cpg_filetypes (extension, mime, content, player) VALUES
+  ('jpg', 'image/jpg', 'image', ''),
+  ('jpeg', 'image/jpeg', 'image', ''),
+  ('mp3', 'audio/mpeg3', 'audio', 'WMP'),
+  ('mp4', 'video/mp4', 'movie', 'HTMLV');
 
 INSERT INTO cpg_usergroups (
   group_id, group_name, group_quota, has_admin_access, can_rate_pictures,

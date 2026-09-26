@@ -203,7 +203,7 @@ Until that point, the statement is:
 The broad source inventory and synthetic migration gates are now substantially covered. Remaining work should focus on evidence that cannot be replaced by more synthetic discovery:
 
 1. migrate at least one representative real/anonymized 1.6 installation;
-2. finish custom source file-type/config/language policy decisions;
+2. finish remaining source config/language policy decisions;
 3. finish source-only persisted EXIF comparison where file re-extraction may be insufficient;
 4. classify remaining per-album behavior flags such as upload/comment/vote policy;
 5. make import persistence source/run scoping production-safe before beta;
