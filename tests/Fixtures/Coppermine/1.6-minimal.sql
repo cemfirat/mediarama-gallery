@@ -134,6 +134,11 @@ CREATE TABLE cpg_vote_stats (
   uid INT NOT NULL DEFAULT 0
 );
 
+CREATE TABLE cpg_favpics (
+  user_id INT NOT NULL PRIMARY KEY,
+  user_favpics TEXT NOT NULL
+);
+
 CREATE TABLE cpg_config (
   name VARCHAR(40) NOT NULL PRIMARY KEY,
   value VARCHAR(255) NOT NULL DEFAULT ''
@@ -188,6 +193,9 @@ INSERT INTO cpg_vote_stats (
 ) VALUES (
   300, '100', 4, 1704196800, '', 'fixture', 'fixture', 1
 );
+
+INSERT INTO cpg_favpics (user_id, user_favpics)
+VALUES (1, 'YToxOntpOjA7aToxMDA7fQ==');
 
 INSERT INTO cpg_config (name, value) VALUES
   ('keyword_separator', ';'),
