@@ -226,6 +226,12 @@ jobs:
           assert_inspect_blocked deceptive-extension 'Picture 100 source media is not importable: MIME type "text/plain" is not allowed for upload.'
           mv /tmp/coppermine-albums/userpics/sample.jpg.good /tmp/coppermine-albums/userpics/sample.jpg
 
+          cp /tmp/coppermine-albums/userpics/sample.jpg /tmp/coppermine-albums/userpics/sample.jpg.good
+          head -c 100 /tmp/coppermine-albums/userpics/sample.jpg.good > /tmp/coppermine-albums/userpics/sample.jpg
+          php -r '$mime=(new finfo(FILEINFO_MIME_TYPE))->file($argv[1]); if ($mime !== "image/jpeg") { fwrite(STDERR, "Expected truncated fixture to remain image/jpeg, got ".$mime.PHP_EOL); exit(1); }' /tmp/coppermine-albums/userpics/sample.jpg
+          assert_inspect_blocked corrupt-image 'Picture 100 source media is not importable: Unable to inspect image geometry:'
+          mv /tmp/coppermine-albums/userpics/sample.jpg.good /tmp/coppermine-albums/userpics/sample.jpg
+
       - name: Verify Coppermine 1.7 capability detection
         run: |
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \

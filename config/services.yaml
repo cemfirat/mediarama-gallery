@@ -106,12 +106,15 @@ services:
         arguments:
             $binary: '%env(IMAGEMAGICK_BINARY)%'
 
-    Mediarama\Media\Application\InspectImageGeometry:
-        alias: Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector
+    Mediarama\Media\Application\InspectImageFileGeometry:
+        alias: Mediarama\Media\Infrastructure\Image\ImageMagickFileGeometryInspector
 
-    Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector:
+    Mediarama\Media\Infrastructure\Image\ImageMagickFileGeometryInspector:
         arguments:
             $identifyBinary: '%env(IMAGEMAGICK_IDENTIFY_BINARY)%'
+
+    Mediarama\Media\Application\InspectImageGeometry:
+        alias: Mediarama\Media\Infrastructure\Image\ImageMagickGeometryInspector
 
     mediarama.media.profile.thumbnail:
         class: Mediarama\Media\Application\ImageDerivativeProfile

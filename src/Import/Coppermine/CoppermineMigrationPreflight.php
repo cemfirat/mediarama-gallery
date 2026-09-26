@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Mediarama\Import\Coppermine;
 
 use Doctrine\DBAL\Connection;
+use Mediarama\Media\Application\InspectImageFileGeometry;
 use Mediarama\Upload\Application\UploadContentPolicy;
 
 final readonly class CoppermineMigrationPreflight
@@ -17,6 +18,7 @@ final readonly class CoppermineMigrationPreflight
         private CoppermineTablePrefix $prefix,
         private CoppermineFileLocator $files,
         private UploadContentPolicy $contentPolicy,
+        private InspectImageFileGeometry $imageGeometry,
     ) {
     }
 
@@ -172,7 +174,12 @@ SQL,
             }
 
             try {
-                $this->contentPolicy->assertMimeAllowed($this->detectMimeType($path));
+                $mimeType = $this->detectMimeType($path);
+                $this->contentPolicy->assertMimeAllowed($mimeType);
+
+                if (str_starts_with($mimeType, 'image/')) {
+                    ($this->imageGeometry)($path);
+                }
             } catch (\Throwable $e) {
                 $blockers[] = sprintf('Picture %s source media is not importable: %s', $sourceId, $e->getMessage());
             }
