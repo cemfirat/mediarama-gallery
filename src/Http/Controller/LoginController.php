@@ -19,6 +19,7 @@ final class LoginController extends AbstractController
             'login_failed' => $authentication->getLastAuthenticationError() !== null,
         ]);
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        $response->headers->set('Cache-Control', 'no-store');
 
         return $response;
     }

@@ -58,10 +58,12 @@ for _ in $(seq 1 50); do
     sleep 0.2
 done
 
-if ! curl --fail --silent --show-error "$BASE_URL/login" -o /tmp/auth-login-ready.html; then
+if ! curl --fail --silent --show-error -D /tmp/auth-login-ready.headers "$BASE_URL/login" -o /tmp/auth-login-ready.html; then
     cat /tmp/mediarama-auth-http.log || true
     exit 1
 fi
+grep -i -F "x-robots-tag: noindex, nofollow" /tmp/auth-login-ready.headers
+grep -i -F "no-store" /tmp/auth-login-ready.headers
 
 expect_status() {
     local expected="$1"
@@ -199,6 +201,56 @@ done
 rm -f "$ACTIVE_JAR"
 ACTIVE_TOKEN="$(csrf_token "$ACTIVE_JAR" /tmp/auth-active-login-2.html)"
 expect_status 302 "$(login_status auth-ci-active "$PASSWORD" "$ACTIVE_JAR" "$ACTIVE_TOKEN")" "active user can establish a fresh session"
+
+ACTIVE_ID="$ACTIVE_ID" php <<'PHP'
+<?php
+require 'vendor/autoload.php';
+
+$dsn = new Doctrine\DBAL\Tools\DsnParser([
+    'postgresql' => 'pdo_pgsql',
+    'postgres' => 'pdo_pgsql',
+]);
+$db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
+$replacement = password_hash('replacement-ci-password', PASSWORD_BCRYPT, ['cost' => 4]);
+if (!is_string($replacement)) {
+    fwrite(STDERR, "Could not create replacement CI password hash.\n");
+    exit(1);
+}
+$db->executeStatement(
+    'UPDATE users SET password_hash = :password_hash, updated_at = CURRENT_TIMESTAMP WHERE id = :id',
+    ['password_hash' => $replacement, 'id' => getenv('ACTIVE_ID')],
+);
+PHP
+
+expect_status 401 "$(upload_status "$ACTIVE_JAR")" "session is invalidated after password changes"
+
+ACTIVE_ID="$ACTIVE_ID" php <<'PHP'
+<?php
+require 'vendor/autoload.php';
+
+$dsn = new Doctrine\DBAL\Tools\DsnParser([
+    'postgresql' => 'pdo_pgsql',
+    'postgres' => 'pdo_pgsql',
+]);
+$db = Doctrine\DBAL\DriverManager::getConnection($dsn->parse((string) getenv('DATABASE_URL')));
+$restored = password_hash('mediarama-ci-password', PASSWORD_BCRYPT, ['cost' => 4]);
+if (!is_string($restored)) {
+    fwrite(STDERR, "Could not restore CI password hash.\n");
+    exit(1);
+}
+$db->executeStatement(
+    "UPDATE users
+     SET password_hash = :password_hash,
+         status = 'active',
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = :id",
+    ['password_hash' => $restored, 'id' => getenv('ACTIVE_ID')],
+);
+PHP
+
+rm -f "$ACTIVE_JAR"
+ACTIVE_TOKEN="$(csrf_token "$ACTIVE_JAR" /tmp/auth-active-login-3.html)"
+expect_status 302 "$(login_status auth-ci-active "$PASSWORD" "$ACTIVE_JAR" "$ACTIVE_TOKEN")" "active user can establish a session after password reset"
 
 ACTIVE_ID="$ACTIVE_ID" php <<'PHP'
 <?php
