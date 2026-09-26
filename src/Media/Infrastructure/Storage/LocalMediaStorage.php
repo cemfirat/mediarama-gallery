@@ -128,6 +128,11 @@ final readonly class LocalMediaStorage implements MediaStorage
         return null;
     }
 
+    public function localPath(StorageObjectId $id): string
+    {
+        return $this->path($id);
+    }
+
     private function path(StorageObjectId $id): string
     {
         if ($id->disk !== 'media') {

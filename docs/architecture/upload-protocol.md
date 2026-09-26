@@ -41,7 +41,7 @@ After the MIME/type allow policy and expected-size check pass, Mediarama validat
 - audio must contain an audio stream recognized by FFprobe;
 - video must contain a video stream recognized by FFprobe.
 
-FFprobe runs through an argv-only process with a parent timeout plus bounded probe size and analyze duration. A structural validation failure leaves the upload session in `uploaded`, keeps the temporary object retryable, and prevents immutable-original promotion, `MediaAsset` creation and background dispatch.
+FFprobe runs through an argv-only process with a parent timeout plus bounded probe size and analyze duration. With the current local-storage adapter the validator probes the already assembled temporary file in place; it does not duplicate a potentially multi-gigabyte upload merely to validate it. A structural validation failure leaves the upload session in `uploaded`, keeps the temporary object retryable, and prevents immutable-original promotion, `MediaAsset` creation and background dispatch.
 
 
 ## Resume
