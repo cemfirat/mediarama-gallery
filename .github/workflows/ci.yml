@@ -80,7 +80,7 @@ jobs:
       - name: Install runtime tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y exiftool imagemagick mariadb-client
+          sudo apt-get install -y exiftool ffmpeg imagemagick mariadb-client
 
       - name: Validate Composer metadata
         run: composer validate --strict
@@ -184,8 +184,12 @@ jobs:
           }
           PHP
 
-          cp tests/Fixtures/Coppermine/media/sample.mp3 /tmp/coppermine-albums/userpics/sample.mp3
-          cp tests/Fixtures/Coppermine/media/sample.mp4 /tmp/coppermine-albums/userpics/sample.mp4
+          ffmpeg -loglevel error -y \
+            -f lavfi -i anullsrc=r=44100:cl=mono -t 0.25 -q:a 9 \
+            /tmp/coppermine-albums/userpics/sample.mp3
+          ffmpeg -loglevel error -y \
+            -f lavfi -i color=c=black:s=16x16:r=10:d=0.25 -an -c:v mpeg4 -q:v 5 \
+            /tmp/coppermine-albums/userpics/sample.mp4
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root coppermine \
             < tests/Fixtures/Coppermine/1.6-minimal.sql
           mariadb --host=127.0.0.1 --port=3306 --user=root --password=root \

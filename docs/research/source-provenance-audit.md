@@ -83,22 +83,21 @@ These are interoperability/schema facts used to read a Coppermine database.
 
 They are not evidence by themselves of copied Coppermine runtime implementation.
 
-## Synthetic SQL fixtures
+## Synthetic migration fixtures
 
-`tests/Fixtures/Coppermine/1.6-minimal.sql` reproduces a deliberately small subset of Coppermine table/column shape needed for integration tests.
+`tests/Fixtures/Coppermine/1.6-minimal.sql` and `1.7-variation.sql` are explicitly documented as hand-assembled interoperability fixtures based on verified upstream schema/configuration facts. They are not source database dumps and do not carry upstream comments or bundled gallery content.
 
-`tests/Fixtures/Coppermine/1.7-variation.sql` adds the verified 1.7 `mime`/`ftype` variation.
+The fixture directory now carries its own provenance README and each SQL file identifies the upstream model reference and license context.
 
-These fixtures are compatibility material and closely reflect source schema facts.
+Binary media is not kept as provenance-ambiguous repository content:
 
-Before final license sign-off, they should be treated explicitly as provenance-sensitive test fixtures:
+- JPEG fixtures are generated during CI with ImageMagick and receive synthetic EXIF/XMP/IPTC values via ExifTool;
+- MP3 and MP4 fixtures are generated during CI with FFmpeg;
+- no Coppermine sample photos, theme graphics, icons or fonts are bundled.
 
-- document that they are synthetic/minimal interoperability fixtures;
-- keep only fields necessary for tests;
-- avoid copying comments, seed data or implementation text unnecessarily;
-- review whether an attribution/provenance notice is desirable.
+A future real/anonymized gallery fixture requires its own documented permission, source, anonymization process and retained-data scope before commit.
 
-No production runtime code should depend on a copied Coppermine SQL schema file.
+No production runtime code depends on a copied Coppermine SQL schema file.
 
 ## Research documentation
 
@@ -169,10 +168,9 @@ These differences do not by themselves prove legal independence, but they are co
 Before closing the licensing/provenance gate:
 
 - keep the automated full-history marker audit green and manually review any future similarity/provenance exception;
-- inspect migration fixtures and any future real-gallery fixtures;
+- inspect any future real-gallery fixture and its documented permission/anonymization record;
 - inspect future importer code added from upstream examples;
-- inspect any copied theme/UI assets;
-- inspect bundled icons/images/fonts for third-party licenses;
+- keep generated/bundled asset provenance explicit if repository assets are added later;
 - inspect any ported metadata/parser logic;
 - keep third-party package licenses separate from Mediarama's own license.
 
@@ -211,7 +209,16 @@ The automated history marker audit adds evidence that obvious upstream implement
 This is not yet the final licensing exit gate because:
 
 - marker-based history review cannot by itself exclude heavily rewritten/renamed derivation;
-- fixtures/assets still need final provenance classification;
+- future real/anonymized fixtures remain provenance-sensitive by definition;
 - the project owner has not yet made a deliberately documented final license choice.
 
 Issue #11 should remain open.
+
+
+## Dependency and generated-asset boundary
+
+Mediarama does not vendor Composer or npm dependency source into the repository: `vendor/`, `node_modules/` and generated `public/build/` are ignored.
+
+UIkit, Symfony, Doctrine, Flysystem and build/test packages remain separately licensed dependencies resolved by their package managers. Their licenses are not reclassified as Mediarama-authored source merely because CI installs them or copies generated UIkit build artifacts into the ignored build directory.
+
+At the current audited tree, the only repository binary media were the two synthetic MP3/MP4 test fixtures. They are removed by the next fixture-provenance change and generated in CI instead.

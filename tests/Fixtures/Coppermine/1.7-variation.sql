@@ -1,3 +1,8 @@
+-- Synthetic Coppermine 1.7 capability variation layered onto the 1.6 test fixture.
+-- Source model reference: coppermine-gallery/cpg1.7.x schema/update sources.
+-- Hand-assembled minimal variation for Mediarama tests; not an upstream database dump.
+-- Upstream reference license: GPL-3.0; Mediarama repository: GPL-3.0-or-later.
+
 ALTER TABLE cpg_pictures
     ADD COLUMN mime VARCHAR(255) NOT NULL DEFAULT 'image/*' AFTER total_filesize,
     ADD COLUMN ftype VARCHAR(32) NOT NULL DEFAULT 'image' AFTER mime;

@@ -1,3 +1,8 @@
+-- Synthetic Coppermine 1.6 migration interoperability fixture.
+-- Source model reference: coppermine-gallery/cpg1.6.x sql/schema.sql and sql/basic.sql.
+-- Hand-assembled minimal schema/data for Mediarama tests; not an upstream database dump.
+-- Upstream reference license: GPL-3.0; Mediarama repository: GPL-3.0-or-later.
+
 CREATE TABLE cpg_usergroups (
   group_id INT NOT NULL PRIMARY KEY,
   group_name VARCHAR(255) NOT NULL,
